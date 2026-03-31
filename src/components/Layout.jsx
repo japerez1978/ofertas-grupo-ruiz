@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, Sliders, Zap } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Sliders } from 'lucide-react'
 
 const navItems = [
   { to: '/', label: 'Ofertas', icon: LayoutDashboard },
@@ -18,9 +18,11 @@ export default function Layout() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <NavLink to="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-navy-600 flex items-center justify-center shadow-lg shadow-accent-500/20 group-hover:shadow-accent-500/40 transition-shadow duration-300">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
+              <img
+                src="/logo.png"
+                alt="Grupo Ruiz logo"
+                className="w-10 h-10 rounded-xl object-contain group-hover:opacity-90 transition-opacity duration-300"
+              />
               <div>
                 <h1 className="text-lg font-bold tracking-tight text-white leading-none">
                   GRUPO RUIZ
