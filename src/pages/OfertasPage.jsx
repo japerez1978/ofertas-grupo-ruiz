@@ -357,8 +357,7 @@ export default function OfertasPage() {
             </button>
           )}
         </h3>
-        <div className="flex flex-wrap gap-2">
-          {/* Total pill */}
+        <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
           {[{ value: 'Total', label: 'Total', textColor: 'text-white' },
             ...OFFER_STATUSES.map(s => ({ value: s.value, label: s.label, textColor: s.color.split(' ')[1] || 'text-steel-300' }))
           ].map(({ value, label, textColor }) => {
@@ -369,13 +368,13 @@ export default function OfertasPage() {
                 key={value}
                 type="button"
                 onClick={() => handleStatCard(value)}
-                style={isActive ? { boxShadow: '0 0 16px rgba(41,182,246,0.55), 0 0 5px rgba(41,182,246,0.3)' } : {}}
-                className={`glass-card rounded-xl px-4 py-3 flex flex-col items-center min-w-[90px] transition-all cursor-pointer border ${
+                style={isActive ? { boxShadow: '0 0 14px rgba(41,182,246,0.5), 0 0 4px rgba(41,182,246,0.25)' } : {}}
+                className={`glass-card rounded-lg px-2.5 py-2 flex flex-col items-center shrink-0 transition-all cursor-pointer border ${
                   isActive ? 'border-accent-500/70 bg-accent-500/10 scale-[1.03]' : 'border-transparent hover:border-white/10 hover:bg-white/3'
                 }`}
               >
-                <span className={`text-2xl font-bold tabular-nums ${isActive ? 'text-accent-300' : textColor}`}>{count}</span>
-                <span className="text-[11px] text-steel-400 font-medium mt-0.5 text-center leading-tight">{label}</span>
+                <span className={`text-lg font-bold tabular-nums leading-none ${isActive ? 'text-accent-300' : textColor}`}>{count}</span>
+                <span className="text-[9px] text-steel-400 font-medium mt-0.5 text-center leading-tight whitespace-nowrap">{label}</span>
               </button>
             )
           })}
