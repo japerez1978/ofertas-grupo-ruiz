@@ -427,7 +427,7 @@ export default function OfertasPage() {
           />
           {search && <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-steel-500 hover:text-white"><X className="w-4 h-4" /></button>}
         </div>
-        <MultiFilter id="filter-estado"  icon={Tag}      label="Estado"  options={OFFER_STATUSES} selected={statusFilter}  onChange={v => { setStatusFilter(v); setActiveStatCard(null) }} />
+        <MultiFilter id="filter-estado"  icon={Tag}      label="Estado"  options={OFFER_STATUSES} selected={statusFilter}  onChange={v => { setStatusFilter(v); setActiveStatCard([]) }} />
         <MultiFilter id="filter-tipo"    icon={Briefcase} label="Tipo"   options={TIPOS_OFERTA}  selected={tipoFilter}   onChange={setTipoFilter} />
         <MultiFilter id="filter-empresa" icon={Building2} label="Empresa" options={uniqueEmpresas} selected={empresaFilter} onChange={setEmpresaFilter} />
       </div>
