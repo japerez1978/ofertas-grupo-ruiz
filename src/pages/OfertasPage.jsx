@@ -109,14 +109,14 @@ export default function OfertasPage() {
   const [statusFilter, setStatusFilter] = useState([])
   const [tipoFilter, setTipoFilter]     = useState([])
   const [empresaFilter, setEmpresaFilter] = useState([])
-  const [unidadFilter, setUnidadFilter] = useState(null)
-  const [activeStatCard, setActiveStatCard] = useState(null)
+  const [unidadFilter, setUnidadFilter] = useState([])
+  const [activeStatCard, setActiveStatCard] = useState([]) // array for multi-select
   const [sortField, setSortField]       = useState('n__de_oferta')
   const [sortDir, setSortDir]           = useState('desc')
   const [matrices, setMatrices]         = useState([])
   const [savingScores, setSavingScores] = useState(false)
   const [savedScores, setSavedScores]   = useState(false)
-  const [scoreFilter, setScoreFilter]   = useState(null) // null | 'Alto' | 'Medio' | 'Bajo'
+  const [scoreFilter, setScoreFilter]   = useState([]) // array for multi-select
 
   const CACHE_KEY = 'gr_ofertas_cache'
   const CACHE_TTL = 5 * 60 * 1000
@@ -173,8 +173,8 @@ export default function OfertasPage() {
     if (statusFilter.length > 0) list = list.filter(o => statusFilter.includes(o.properties?.estado_de_la_oferta_presupuesto))
     if (tipoFilter.length > 0)   list = list.filter(o => tipoFilter.includes(o.properties?.tipo_de_oferta))
     if (empresaFilter.length > 0) list = list.filter(o => empresaFilter.includes((o._enriched?.companyName || o.properties?.empresa_vinculada_a_oferta || '').trim()))
-    if (activeStatCard && activeStatCard !== 'Total') list = list.filter(o => o.properties?.estado_de_la_oferta_presupuesto === activeStatCard)
-    if (unidadFilter) list = list.filter(o => (o.properties?.unidad_de_negocio_oferta || 'Sin asignar') === unidadFilter)
+    if (activeStatCard.length > 0 && !activeStatCard.includes('Total')) list = list.filter(o => activeStatCard.includes(o.properties?.estado_de_la_oferta_presupuesto))
+    if (unidadFilter.length > 0) list = list.filter(o => unidadFilter.includes(o.properties?.unidad_de_negocio_oferta || 'Sin asignar'))
     list.sort((a, b) => {
       let aVal, bVal
       if (sortField === '_dealName')    { aVal = a._enriched?.dealName || ''; bVal = b._enriched?.dealName || '' }
@@ -209,8 +209,8 @@ export default function OfertasPage() {
 
   // Apply score-level filter on top of scored offers + optional score sort
   const scoredFiltered = useMemo(() => {
-    let list = scoreFilter
-      ? scoredOffers.filter(o => o._score?.label === scoreFilter)
+    let list = scoreFilter.length > 0
+      ? scoredOffers.filter(o => scoreFilter.includes(o._score?.label))
       : [...scoredOffers]
     if (sortField === '_score') {
       list.sort((a, b) => {
@@ -251,16 +251,17 @@ export default function OfertasPage() {
     else { setSortField(field); setSortDir('asc') }
   }
   function handleStatCard(label) {
-    setActiveStatCard(prev => prev === label ? null : label)
-    setStatusFilter([])
+    if (label === 'Total') { setActiveStatCard([]); setStatusFilter([]); return }
+    setActiveStatCard(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label])
+    setStatusFilter([])  // use cards OR dropdown, not both
   }
   function handleUnidadCard(name) {
-    setUnidadFilter(prev => prev === name ? null : name)
+    setUnidadFilter(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name])
   }
   function clearAll() {
     setStatusFilter([]); setTipoFilter([]); setEmpresaFilter([])
-    setActiveStatCard(null); setUnidadFilter(null); setSearch('')
-    setScoreFilter(null)
+    setActiveStatCard([]); setUnidadFilter([]); setSearch('')
+    setScoreFilter([])
   }
   async function handleSaveScores() {
     const pairs = scoredFiltered
@@ -280,10 +281,10 @@ export default function OfertasPage() {
   const totalValue       = ofertas.reduce((s, o) => s + parseFloat(o.properties?.valor_oferta || 0), 0)
   const filteredValue    = scoredFiltered.reduce((s, o) => s + parseFloat(o.properties?.valor_oferta || 0), 0)
   const countByStatus    = (status) => scoredFiltered.filter(o => o.properties?.estado_de_la_oferta_presupuesto === status).length
-  const hasFilters       = statusFilter.length || tipoFilter.length || empresaFilter.length || activeStatCard || unidadFilter || search || scoreFilter
+  const hasFilters = statusFilter.length || tipoFilter.length || empresaFilter.length || activeStatCard.length || unidadFilter.length || search || scoreFilter.length
 
   const statusCards = [
-    { label: 'Total',       count: filtered.length,              color: 'text-white' },
+    { label: 'Total',       count: scoredFiltered.length,        color: 'text-white' },
     { label: 'Solicitada',  count: countByStatus('Solicitada'),  color: 'text-blue-400' },
     { label: 'Asignada',    count: countByStatus('Asignada'),    color: 'text-cyan-400' },
     { label: 'En revisión', count: countByStatus('En revisión'), color: 'text-pink-400' },
@@ -341,7 +342,7 @@ export default function OfertasPage() {
       {/* Status summary cards */}
       <div className="flex flex-wrap gap-2">
         {statusCards.map(c => (
-          <StatCard key={c.label} {...c} active={activeStatCard === c.label} onClick={() => handleStatCard(c.label)} />
+          <StatCard key={c.label} {...c} active={c.label === 'Total' ? activeStatCard.length === 0 : activeStatCard.includes(c.label)} onClick={() => handleStatCard(c.label)} />
         ))}
       </div>
 
@@ -357,8 +358,8 @@ export default function OfertasPage() {
                 key={name}
                 type="button"
                 onClick={() => handleUnidadCard(name)}
-                style={unidadFilter === name ? { boxShadow: '0 0 16px rgba(41,182,246,0.55), 0 0 5px rgba(41,182,246,0.3)' } : {}}
-                className={`flex flex-col px-4 py-3 rounded-xl border text-left transition-all ${unidadFilter === name ? 'border-accent-500/70 bg-accent-500/10 scale-[1.02]' : 'border-white/5 bg-surface-800/60 hover:border-white/15 hover:bg-white/3'}`}
+                style={unidadFilter.includes(name) ? { boxShadow: '0 0 16px rgba(41,182,246,0.55), 0 0 5px rgba(41,182,246,0.3)' } : {}}
+                className={`flex flex-col px-4 py-3 rounded-xl border text-left transition-all ${unidadFilter.includes(name) ? 'border-accent-500/70 bg-accent-500/10 scale-[1.02]' : 'border-white/5 bg-surface-800/60 hover:border-white/15 hover:bg-white/3'}`}
               >
                 <p className="text-white text-sm font-medium truncate">{name}</p>
                 <p className="text-steel-500 text-xs">{stats.count} oferta{stats.count !== 1 ? 's' : ''}</p>
@@ -375,8 +376,8 @@ export default function OfertasPage() {
           <h3 className="text-xs font-semibold text-accent-400 uppercase tracking-wider flex items-center gap-2 mb-3">
             <Zap className="w-4 h-4" />Filtrar por Score
             <span className="text-steel-500 normal-case font-normal">(acumulable con otros filtros)</span>
-            {scoreFilter && (
-              <button onClick={() => setScoreFilter(null)} className="ml-auto text-steel-500 hover:text-white transition-colors">
+            {scoreFilter.length > 0 && (
+              <button onClick={() => setScoreFilter([])} className="ml-auto text-steel-500 hover:text-white transition-colors">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
@@ -387,13 +388,13 @@ export default function OfertasPage() {
               { label: 'Medio', dot: '🟡', color: 'text-amber-400',   border: 'border-amber-500/70',   activeBg: 'bg-amber-500/15',   neon: '0 0 16px rgba(251,191,36,0.6), 0 0 5px rgba(251,191,36,0.3)' },
               { label: 'Bajo',  dot: '🔴', color: 'text-red-400',     border: 'border-red-500/70',     activeBg: 'bg-red-500/15',     neon: '0 0 16px rgba(248,113,113,0.6), 0 0 5px rgba(248,113,113,0.3)' },
             ].map(({ label, dot, color, border, activeBg, neon }) => {
-              const isActive = scoreFilter === label
+              const isActive = scoreFilter.includes(label)
               const count = scoreCounts[label] || 0
               return (
                 <button
                   key={label}
                   type="button"
-                  onClick={() => setScoreFilter(prev => prev === label ? null : label)}
+                  onClick={() => setScoreFilter(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label])}
                   style={isActive ? { boxShadow: neon } : {}}
                   className={`flex items-center gap-3 px-5 py-3 rounded-xl border transition-all ${
                     isActive
