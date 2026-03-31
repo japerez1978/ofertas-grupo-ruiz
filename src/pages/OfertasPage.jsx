@@ -171,7 +171,7 @@ export default function OfertasPage() {
     }
     if (tipoFilter.length > 0)   list = list.filter(o => tipoFilter.includes(o.properties?.tipo_de_oferta))
     if (activeStatCard.length > 0 && !activeStatCard.includes('Total')) list = list.filter(o => activeStatCard.includes(o.properties?.estado_de_la_oferta_presupuesto))
-    if (unidadFilter.length > 0) list = list.filter(o => unidadFilter.includes(o.properties?.unidad_de_negocio_oferta || 'Sin asignar'))
+    // NOTE: unidadFilter is applied later in scoredFiltered so unidad cards always stay visible
     list.sort((a, b) => {
       let aVal, bVal
       if (sortField === '_dealName')    { aVal = a._enriched?.dealName || ''; bVal = b._enriched?.dealName || '' }
@@ -184,7 +184,7 @@ export default function OfertasPage() {
       return sortDir === 'asc' ? cmp : -cmp
     })
     return list
-  }, [ofertas, search, tipoFilter, activeStatCard, unidadFilter, sortField, sortDir])
+  }, [ofertas, search, tipoFilter, activeStatCard, sortField, sortDir])
 
 
   // Score computation + final score-level filter
@@ -204,11 +204,13 @@ export default function OfertasPage() {
     })
   }, [filtered, matrices])
 
-  // Apply score-level filter on top of scored offers + optional score sort
+  // Apply score-level filter + unidadFilter (here, so unidad cards stats stay intact)
   const scoredFiltered = useMemo(() => {
     let list = scoreFilter.length > 0
       ? scoredOffers.filter(o => scoreFilter.includes(o._score?.label))
       : [...scoredOffers]
+    if (unidadFilter.length > 0)
+      list = list.filter(o => unidadFilter.includes(o.properties?.unidad_de_negocio_oferta || 'Sin asignar'))
     if (sortField === '_score') {
       list.sort((a, b) => {
         const aScore = a._score?.score ?? -1
@@ -217,7 +219,7 @@ export default function OfertasPage() {
       })
     }
     return list
-  }, [scoredOffers, scoreFilter, sortField, sortDir])
+  }, [scoredOffers, scoreFilter, unidadFilter, sortField, sortDir])
 
   // Score level counts for filter buttons
   const scoreCounts = useMemo(() => {
@@ -228,10 +230,14 @@ export default function OfertasPage() {
     return counts
   }, [scoredOffers])
 
-  // Unidad stats — from scoredFiltered so it reacts to ALL active filters incl. score
+  // Unidad stats — use scoredOffers + scoreFilter but WITHOUT unidadFilter
+  // so all unit cards always remain visible when one is selected
   const unidadStats = useMemo(() => {
+    const base = scoreFilter.length > 0
+      ? scoredOffers.filter(o => scoreFilter.includes(o._score?.label))
+      : scoredOffers
     const map = {}
-    scoredFiltered.forEach(o => {
+    base.forEach(o => {
       const u = o.properties?.unidad_de_negocio_oferta
       if (!u) return
       if (!map[u]) map[u] = { count: 0, value: 0 }
@@ -239,7 +245,7 @@ export default function OfertasPage() {
       map[u].value += parseFloat(o.properties?.valor_oferta || 0)
     })
     return Object.entries(map).sort((a, b) => b[1].value - a[1].value)
-  }, [scoredFiltered])
+  }, [scoredOffers, scoreFilter])
 
   // ── Handlers ──
 
@@ -433,21 +439,19 @@ export default function OfertasPage() {
                   style={{
                     background: 'linear-gradient(135deg, rgba(120,20,20,0.35) 0%, rgba(60,8,8,0.15) 100%)',
                     boxShadow: globalActive
-                      ? '0 0 22px rgba(163,41,41,0.55), 0 0 8px rgba(163,41,41,0.3), inset 0 1px 0 rgba(255,255,255,0.06)'
-                      : '0 2px 12px rgba(0,0,0,0.3)',
+                      ? '0 0 18px rgba(163,41,41,0.5), 0 0 6px rgba(163,41,41,0.25)'
+                      : '0 2px 8px rgba(0,0,0,0.25)',
                   }}
-                  className={`col-span-2 flex items-center gap-4 px-5 py-4 rounded-xl border text-left transition-all duration-300 ${
-                    globalActive
-                      ? 'border-red-700/60 scale-[1.01]'
-                      : 'border-red-900/30 hover:border-red-800/50 hover:scale-[1.01]'
+                  className={`flex flex-col px-3 py-3 rounded-xl border text-left transition-all duration-300 ${
+                    globalActive ? 'border-red-700/60 scale-[1.01]' : 'border-red-900/30 hover:border-red-800/50 hover:scale-[1.01]'
                   }`}
                 >
-                  <img src="/logo.png" alt="Grupo Ruiz" className="w-10 h-10 rounded-lg object-contain shrink-0 opacity-90" />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-base font-bold ${globalActive ? 'text-red-300' : 'text-white/90'}`}>Grupo Ruiz</p>
-                    <p className="text-steel-400 text-xs">{globalCount} oferta{globalCount !== 1 ? 's' : ''} · todas las unidades</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <img src="/logo.png" alt="" className="w-5 h-5 object-contain shrink-0 opacity-90" />
+                    <p className={`text-xs font-bold truncate ${globalActive ? 'text-red-300' : 'text-white/90'}`}>Grupo Ruiz</p>
                   </div>
-                  <p className="text-emerald-400 font-bold text-sm tabular-nums shrink-0">{formatCurrency(globalValue)}</p>
+                  <p className="text-steel-400 text-[10px]">{globalCount} oferta{globalCount !== 1 ? 's' : ''}</p>
+                  <p className="text-emerald-400 font-semibold text-[10px] mt-0.5 tabular-nums">{formatCurrency(globalValue)}</p>
                 </button>
               )
             })()}
