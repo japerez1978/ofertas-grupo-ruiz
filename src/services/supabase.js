@@ -3,58 +3,57 @@ import { ALL_MATRICES } from '../data/matrices'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-export const PROJECT_SLUG = import.meta.env.VITE_PROJECT_SLUG || 'grupo-ruiz'
+
+// El subdominio identifica al tenant (ej: 'intranox', 'saltoki')
+// Configurable por variable de entorno por despliegue
+export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'intranox'
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// Cache en memoria del tenant_id para no hacer múltiples queries
+let _tenantId = null
 
-/** Obtiene o crea el registro del proyecto en Supabase */
-async function getOrCreateProject() {
+/** Busca el tenant_id en Supabase por su subdominio */
+async function getTenantId() {
+  if (_tenantId) return _tenantId
+
   const { data, error } = await supabase
-    .from('proyectos')
+    .from('tenants')
     .select('id')
-    .eq('slug', PROJECT_SLUG)
+    .eq('subdominio', TENANT_SLUG)
     .single()
 
-  if (data) return data.id
+  if (error || !data) throw new Error(`Tenant '${TENANT_SLUG}' no encontrado en Supabase`)
 
-  // No existe → crear
-  const { data: created, error: createError } = await supabase
-    .from('proyectos')
-    .insert({ slug: PROJECT_SLUG, nombre: 'Grupo Ruiz Ofertas' })
-    .select('id')
-    .single()
-
-  if (createError) throw createError
-  return created.id
+  _tenantId = data.id
+  return _tenantId
 }
 
-// ─── Matrices ────────────────────────────────────────────────────────────────
+// ─── Matrices de Scoring ─────────────────────────────────────────────────────
 
 /**
- * Carga las matrices de scoring desde Supabase.
- * Si no existen para este proyecto, inserta los defaults.
+ * Carga las matrices de scoring desde Supabase para este tenant.
+ * Si no existen, las crea con los valores por defecto.
+ * Fallback: localStorage → defaults hardcodeados.
  */
 export async function loadMatrices() {
   try {
-    const proyectoId = await getOrCreateProject()
+    const tenantId = await getTenantId()
 
     const { data, error } = await supabase
       .from('scoring_matrices')
       .select('*')
-      .eq('proyecto_id', proyectoId)
+      .eq('tenant_id', tenantId)
       .order('created_at', { ascending: true })
 
     if (error) throw error
 
     if (!data || data.length === 0) {
-      // Primera vez → seed con matrices por defecto
-      await seedDefaultMatrices(proyectoId)
+      // Primera vez → seed con defaults
+      await seedDefaultMatrices(tenantId)
       return ALL_MATRICES
     }
 
-    // Reconstituir matrices desde Supabase
     return data.map(row => ({
       id: row.matrix_key,
       nombre: row.nombre,
@@ -62,23 +61,31 @@ export async function loadMatrices() {
       params: row.params,
     }))
   } catch (e) {
-    console.warn('Supabase loadMatrices failed, using localStorage fallback:', e.message)
-    // Fallback a localStorage
+    console.warn('[Supabase] loadMatrices failed:', e.message, '— usando fallback')
+    // Fallback 1: localStorage
     try {
       const stored = JSON.parse(localStorage.getItem('gr_matrices') || 'null')
       if (stored?.length) return stored
     } catch { /* noop */ }
+    // Fallback 2: defaults hardcodeados
     return ALL_MATRICES
   }
 }
 
-/** Guarda todas las matrices del proyecto en Supabase */
+/**
+ * Guarda las matrices en Supabase (upsert) para este tenant.
+ * Siempre guarda también en localStorage como respaldo.
+ * @returns {boolean} true si Supabase OK, false si solo localStorage
+ */
 export async function saveMatrices(matrices) {
+  // Mirror a localStorage siempre (respaldo offline)
+  try { localStorage.setItem('gr_matrices', JSON.stringify(matrices)) } catch { /* noop */ }
+
   try {
-    const proyectoId = await getOrCreateProject()
+    const tenantId = await getTenantId()
 
     const rows = matrices.map(m => ({
-      proyecto_id: proyectoId,
+      tenant_id: tenantId,
       matrix_key: m.id,
       nombre: m.nombre,
       unidades: m.unidades,
@@ -86,31 +93,45 @@ export async function saveMatrices(matrices) {
       updated_at: new Date().toISOString(),
     }))
 
-    // Upsert (insert or update) by proyecto_id + matrix_key
     const { error } = await supabase
       .from('scoring_matrices')
-      .upsert(rows, { onConflict: 'proyecto_id,matrix_key' })
+      .upsert(rows, { onConflict: 'tenant_id,matrix_key' })
 
     if (error) throw error
-
-    // Mirror to localStorage as backup
-    localStorage.setItem('gr_matrices', JSON.stringify(matrices))
     return true
   } catch (e) {
-    console.warn('Supabase saveMatrices failed, saving to localStorage only:', e.message)
-    localStorage.setItem('gr_matrices', JSON.stringify(matrices))
+    console.warn('[Supabase] saveMatrices failed:', e.message, '— datos guardados solo en localStorage')
     return false
   }
 }
 
-async function seedDefaultMatrices(proyectoId) {
+async function seedDefaultMatrices(tenantId) {
   const rows = ALL_MATRICES.map(m => ({
-    proyecto_id: proyectoId,
+    tenant_id: tenantId,
     matrix_key: m.id,
     nombre: m.nombre,
     unidades: m.unidades,
     params: m.params,
   }))
   const { error } = await supabase.from('scoring_matrices').insert(rows)
-  if (error) console.warn('Seed matrices error:', error.message)
+  if (error) console.warn('[Supabase] seed matrices error:', error.message)
+}
+
+// ─── Events Logging ──────────────────────────────────────────────────────────
+
+/**
+ * Registra un evento en tenant_events (best-effort, no falla si hay error)
+ * @param {string} evento - ej: 'score_calculado', 'score_guardado_hubspot'
+ * @param {Object} metadata - datos adicionales
+ */
+export async function logEvent(evento, metadata = {}) {
+  try {
+    const tenantId = await getTenantId()
+    await supabase.from('tenant_events').insert({
+      tenant_id: tenantId,
+      app_slug: 'ofertas_hubspot',
+      evento,
+      metadata,
+    })
+  } catch { /* fire and forget */ }
 }
