@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom'
 import {
   Search, Filter, ArrowUpDown, FileText, Euro,
   ChevronDown, X, Building2, Tag, Briefcase, Layers, RefreshCw,
-  ExternalLink
+  ExternalLink, Zap, CloudUpload
 } from 'lucide-react'
-import { getAllOfertas } from '../services/hubspot'
+import { getAllOfertas, writeDealScoresBatch } from '../services/hubspot'
 import { getOfferStatusBadge, formatCurrency, OFFER_STATUSES, UNIDADES_NEGOCIO } from '../utils/helpers'
+import { loadMatrices } from '../services/supabase'
+import { getMatrixForUnidad } from '../data/matrices'
+import { calculateScore, getScoreLevel } from '../utils/scoring'
 import Spinner from '../components/Spinner'
 
 const HS_PORTAL = '147691795'
@@ -94,16 +97,22 @@ export default function OfertasPage() {
   const [statusFilter, setStatusFilter] = useState([])
   const [tipoFilter, setTipoFilter] = useState([])
   const [empresaFilter, setEmpresaFilter] = useState([])
-  const [unidadFilter, setUnidadFilter] = useState(null)  // single, from card
+  const [unidadFilter, setUnidadFilter] = useState(null)
   const [activeStatCard, setActiveStatCard] = useState(null)
   const [sortField, setSortField] = useState('n__de_oferta')
   const [sortDir, setSortDir] = useState('desc')
+  const [matrices, setMatrices] = useState([])
+  const [savingScores, setSavingScores] = useState(false)
+  const [savedScores, setSavedScores] = useState(false)
 
   const CACHE_KEY = 'gr_ofertas_cache'
-  const CACHE_TTL = 5 * 60 * 1000  // 5 minutes
+  const CACHE_TTL = 5 * 60 * 1000
 
   useEffect(() => {
-    // Load from cache instantly while fetching fresh data
+    // Load matrices from Supabase
+    loadMatrices().then(setMatrices).catch(() => {})
+
+    // Load offers from cache
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
       if (cached.data && cached.ts && Date.now() - cached.ts < CACHE_TTL) {
@@ -113,8 +122,6 @@ export default function OfertasPage() {
     } catch (e) { /* ignore */ }
 
     fetchOfertas()
-
-    // Auto-refresh every 5 minutes in background
     const interval = setInterval(() => fetchOfertas(false), CACHE_TTL)
     return () => clearInterval(interval)
   }, [])
@@ -240,6 +247,32 @@ export default function OfertasPage() {
     { field: 'valor_oferta', label: 'Valor' },
   ]
 
+  // Pre-compute scores for all filtered offers
+  const scoredOffers = useMemo(() => {
+    if (!matrices.length) return filtered.map(o => ({ ...o, _score: null }))
+    return filtered.map(o => {
+      const unidad = o._enriched?.dealProps?.unidad_de_negocio_deal
+                  || o.properties?.unidad_de_negocio_oferta
+      const matrix = getMatrixForUnidad(unidad)
+      const scoreResult = matrix ? calculateScore(o._enriched?.dealProps || {}, matrix) : null
+      return { ...o, _score: scoreResult }
+    })
+  }, [filtered, matrices])
+
+  async function handleSaveScores() {
+    const pairs = scoredOffers
+      .filter(o => o._score && o._enriched?.dealId)
+      .map(o => ({ dealId: o._enriched.dealId, score: o._score.score }))
+    if (!pairs.length) return
+    setSavingScores(true)
+    try {
+      await writeDealScoresBatch(pairs)
+      setSavedScores(true)
+      setTimeout(() => setSavedScores(false), 3000)
+    } catch (e) { console.error('Error saving scores:', e) }
+    finally { setSavingScores(false) }
+  }
+
   const hasFilters = statusFilter.length || tipoFilter.length || empresaFilter.length || activeStatCard || unidadFilter || search
 
   return (
@@ -259,6 +292,23 @@ export default function OfertasPage() {
           <button onClick={fetchOfertas} className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-700/50 border border-white/8 text-steel-300 text-sm font-medium rounded-xl hover:text-white hover:border-white/15 transition-all">
             <RefreshCw className="w-4 h-4" />Recargar
           </button>
+          {matrices.length > 0 && (
+            <button
+              onClick={handleSaveScores}
+              disabled={savingScores}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl transition-all border ${
+                savedScores
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                  : savingScores
+                    ? 'bg-surface-700/50 border-white/8 text-steel-500 cursor-wait'
+                    : 'bg-surface-700/50 border-white/8 text-steel-300 hover:text-white hover:border-white/15'
+              }`}
+              title="Guardar scores al campo score_rcm de cada Negocio en HubSpot"
+            >
+              <CloudUpload className="w-4 h-4" />
+              {savedScores ? '¡Guardado!' : savingScores ? 'Guardando...' : 'Guardar scores → HubSpot'}
+            </button>
+          )}
           <Link to="/crear" id="btn-create-offer" className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-accent-500 to-accent-600 text-white text-sm font-semibold rounded-xl shadow-lg shadow-accent-500/25 hover:shadow-accent-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
             <FileText className="w-4 h-4" />Nueva Oferta
           </Link>
@@ -343,21 +393,24 @@ export default function OfertasPage() {
                     </span>
                   </th>
                 ))}
+                <th className="px-4 py-3.5 text-center text-steel-400 font-semibold uppercase text-xs">
+                  <span className="inline-flex items-center gap-1"><Zap className="w-3 h-3" />Score</span>
+                </th>
                 <th className="px-4 py-3.5 text-right text-steel-400 font-semibold uppercase text-xs">HS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/4">
               {filtered.length === 0 ? (
-                <tr><td colSpan={columns.length + 1} className="px-5 py-16 text-center text-steel-500">
+                <tr><td colSpan={columns.length + 2} className="px-5 py-16 text-center text-steel-500">
                   {hasFilters ? 'No hay ofertas con esos filtros.' : 'No hay ofertas. ¡Crea la primera!'}
                 </td></tr>
-              ) : filtered.map((oferta, i) => {
+              ) : scoredOffers.map((oferta, i) => {
                 const p = oferta.properties || {}
                 const e = oferta._enriched || {}
                 const statusBadge = getOfferStatusBadge(p.estado_de_la_oferta_presupuesto)
-                // Deal ID from associations
                 const dealAssoc = oferta.associations?.deals?.results || []
                 const dealId = dealAssoc[0]?.id
+                const scoreResult = oferta._score
 
                 return (
                   <tr key={oferta.id} className="hover:bg-white/3 transition-colors group" style={{ animationDelay: `${i * 15}ms` }}>
@@ -367,7 +420,7 @@ export default function OfertasPage() {
                     </td>
                     {/* Nº Heredado */}
                     <td className="px-4 py-3.5 font-medium text-steel-300 text-xs tabular-nums">{p.numero_de_oferta_heredado || '—'}</td>
-                    {/* Negocio – con enlace a HubSpot */}
+                    {/* Negocio */}
                     <td className="px-4 py-3.5 font-medium text-white max-w-[200px]">
                       {e.dealName ? (
                         dealId ? (
@@ -391,7 +444,28 @@ export default function OfertasPage() {
                     </td>
                     {/* Valor */}
                     <td className="px-4 py-3.5 font-semibold text-emerald-400 tabular-nums text-sm">{formatCurrency(p.valor_oferta)}</td>
-                    {/* Enlace directo a HubSpot oferta */}
+                    {/* Score */}
+                    <td className="px-4 py-3.5 text-center">
+                      {scoreResult ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`text-lg font-bold tabular-nums leading-none ${scoreResult.color}`}>
+                            {scoreResult.score}
+                          </span>
+                          <div className="w-12 h-1 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${scoreResult.bg}`}
+                              style={{ width: `${scoreResult.score}%` }}
+                            />
+                          </div>
+                          <span className={`text-[9px] font-semibold uppercase tracking-wide ${scoreResult.color}`}>
+                            {scoreResult.dot} {scoreResult.label}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-steel-600 text-xs">—</span>
+                      )}
+                    </td>
+                    {/* HS link */}
                     <td className="px-4 py-3.5 text-right">
                       <a
                         href={hsOfertaUrl(oferta.id)}
