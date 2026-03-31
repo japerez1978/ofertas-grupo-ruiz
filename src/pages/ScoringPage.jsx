@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Save, ChevronDown, ChevronUp, Sliders, RotateCcw, Info } from 'lucide-react'
-import { ALL_MATRICES, loadMatricesFromLocal, saveMatricesToLocal, MULT } from '../data/matrices'
+import { Save, ChevronDown, ChevronUp, Sliders, RotateCcw, Info, RefreshCw } from 'lucide-react'
+import { ALL_MATRICES } from '../data/matrices'
+import { loadMatrices, saveMatrices } from '../services/supabase'
 import { calculateScore, getScoreLevel } from '../utils/scoring'
+import Spinner from '../components/Spinner'
 
 const MULT_OPTIONS = [
   { value: 1.0,  label: 'Muy alta', color: 'text-emerald-400' },
@@ -106,10 +108,18 @@ function ParamCard({ param, paramIdx, matrixIdx, onWeightChange, onOptionChange,
 }
 
 export default function ScoringPage() {
-  const [matrices, setMatrices] = useState(() => loadMatricesFromLocal())
+  const [matrices, setMatrices] = useState(ALL_MATRICES)
   const [activeTab, setActiveTab] = useState(0)
   const [saved, setSaved] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saveStatus, setSaveStatus] = useState(null)  // null | 'saving' | 'ok' | 'error'
+
+  useEffect(() => {
+    loadMatrices()
+      .then(data => { setMatrices(data); setLoading(false) })
+      .catch(() => { setLoading(false) })
+  }, [])
 
   // Preview: simulate a deal to show example scores
   const previewDeal = {
@@ -159,17 +169,18 @@ export default function ScoringPage() {
     }))
   }
 
-  function handleSave() {
-    saveMatricesToLocal(matrices)
-    setSaved(true)
+  async function handleSave() {
+    setSaveStatus('saving')
+    const ok = await saveMatrices(matrices)
+    setSaveStatus(ok ? 'ok' : 'error')
     setDirty(false)
-    setTimeout(() => setSaved(false), 2500)
+    setTimeout(() => setSaveStatus(null), 2500)
   }
 
   function handleReset() {
     if (confirm('¿Restaurar la matriz a los valores por defecto? Se perderán los cambios guardados.')) {
       setMatrices(ALL_MATRICES)
-      saveMatricesToLocal(ALL_MATRICES)
+      saveMatrices(ALL_MATRICES)
       setDirty(false)
     }
   }
@@ -177,6 +188,25 @@ export default function ScoringPage() {
   const matrix = matrices[activeTab]
   const totalWeight = matrix?.params.reduce((s, p) => s + p.weight, 0) || 0
   const preview = matrix ? calculateScore(previewDeal, matrix) : null
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-64 gap-3">
+      <Spinner size="lg" />
+      <p className="text-steel-400 text-sm">Cargando configuración desde Supabase...</p>
+    </div>
+  )
+
+  const saveBtnClass = saveStatus === 'saving'
+    ? 'bg-surface-700/50 border border-white/10 text-steel-400 cursor-wait'
+    : saveStatus === 'ok'
+      ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
+      : saveStatus === 'error'
+        ? 'bg-red-500/20 border border-red-500/40 text-red-400'
+        : dirty
+          ? 'bg-gradient-to-r from-accent-500 to-accent-600 text-white shadow-lg shadow-accent-500/25 hover:shadow-accent-500/40 hover:scale-[1.02]'
+          : 'bg-surface-700/30 border border-white/5 text-steel-600 cursor-not-allowed'
+
+  const saveBtnLabel = saveStatus === 'saving' ? 'Guardando...' : saveStatus === 'ok' ? '¡Guardado en Supabase!' : saveStatus === 'error' ? 'Error — guardado local' : 'Guardar cambios'
 
   return (
     <div className="space-y-6 animate-fade-in-up max-w-4xl mx-auto">
@@ -201,17 +231,11 @@ export default function ScoringPage() {
           </button>
           <button
             onClick={handleSave}
-            disabled={!dirty}
-            className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 ${
-              saved
-                ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
-                : dirty
-                  ? 'bg-gradient-to-r from-accent-500 to-accent-600 text-white shadow-lg shadow-accent-500/25 hover:shadow-accent-500/40 hover:scale-[1.02]'
-                  : 'bg-surface-700/30 border border-white/5 text-steel-600 cursor-not-allowed'
-            }`}
+            disabled={!dirty || saveStatus === 'saving'}
+            className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 ${saveBtnClass}`}
           >
             <Save className="w-4 h-4" />
-            {saved ? '¡Guardado!' : 'Guardar cambios'}
+            {saveBtnLabel}
           </button>
         </div>
       </div>
