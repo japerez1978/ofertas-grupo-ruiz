@@ -470,7 +470,6 @@ export default function OfertasPage() {
                     <ArrowUpDown className={`w-3 h-3 ${sortField === '_score' ? 'text-accent-400' : 'text-steel-600'}`} />
                   </span>
                 </th>
-                <th className="px-4 py-3.5 text-right text-steel-400 font-semibold uppercase text-xs">HS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/4">
@@ -489,18 +488,25 @@ export default function OfertasPage() {
                 return (
                   <tr key={oferta.id} className="hover:bg-white/3 transition-colors group" style={{ animationDelay: `${i * 15}ms` }}>
                     <td className="px-4 py-3.5">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-navy-900/50 text-accent-400 text-xs font-bold tabular-nums">{p.n__de_oferta || '—'}</span>
+                      <a
+                        href={hsOfertaUrl(oferta.id)}
+                        target="_blank" rel="noopener noreferrer"
+                        title="Ver oferta en HubSpot"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-navy-900/50 border border-accent-500/20 text-accent-400 text-xs font-bold tabular-nums hover:bg-accent-500/15 hover:border-accent-500/50 hover:shadow-[0_0_10px_rgba(41,182,246,0.35)] transition-all"
+                      >
+                        {p.n__de_oferta || '—'}
+                      </a>
                     </td>
                     <td className="px-4 py-3.5 font-medium text-steel-300 text-xs tabular-nums">{p.numero_de_oferta_heredado || '—'}</td>
-                    <td className="px-4 py-3.5 font-medium text-white max-w-[200px]">
+                    <td className="px-4 py-3 font-medium text-white max-w-[220px]">
                       {e.dealName ? (
                         dealId ? (
                           <a href={hsDealUrl(dealId)} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 hover:text-accent-300 transition-colors group/link">
-                            <span className="truncate max-w-[160px]" title={e.dealName}>{e.dealName}</span>
-                            <ExternalLink className="w-3 h-3 shrink-0 opacity-0 group-hover/link:opacity-100 text-accent-400 transition-opacity" />
+                            className="inline-flex items-start gap-1.5 hover:text-accent-300 transition-colors group/link">
+                            <span className="line-clamp-3 leading-snug" title={e.dealName}>{e.dealName}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0 mt-0.5 opacity-0 group-hover/link:opacity-100 text-accent-400 transition-opacity" />
                           </a>
-                        ) : <span className="truncate max-w-[180px] block" title={e.dealName}>{e.dealName}</span>
+                        ) : <span className="line-clamp-3 leading-snug" title={e.dealName}>{e.dealName}</span>
                       ) : '—'}
                     </td>
                     <td className="px-4 py-3.5 text-steel-300 text-xs max-w-[160px] truncate" title={e.companyName || p.empresa_vinculada_a_oferta}>
@@ -528,13 +534,6 @@ export default function OfertasPage() {
                       ) : (
                         <span className="text-steel-600 text-xs">—</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <a href={hsOfertaUrl(oferta.id)} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-steel-500 hover:text-accent-400 transition-colors"
-                        title="Ver en HubSpot">
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
                     </td>
                   </tr>
                 )
