@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Search, Filter, ArrowUpDown, FileText,
-  ChevronDown, X, Building2, Tag, Briefcase, Layers, RefreshCw,
-  ExternalLink, Zap, CloudUpload
+  Search, ArrowUpDown, FileText,
+  ChevronDown, X, Briefcase, Layers, RefreshCw,
+  ExternalLink, Zap, CloudUpload, Filter
 } from 'lucide-react'
 import { getAllOfertas, writeDealScoresBatch } from '../services/hubspot'
 import { getOfferStatusBadge, formatCurrency, OFFER_STATUSES } from '../utils/helpers'
@@ -106,9 +106,7 @@ export default function OfertasPage() {
   const [loading, setLoading]           = useState(true)
   const [error, setError]               = useState(null)
   const [search, setSearch]             = useState('')
-  const [statusFilter, setStatusFilter] = useState([])
   const [tipoFilter, setTipoFilter]     = useState([])
-  const [empresaFilter, setEmpresaFilter] = useState([])
   const [unidadFilter, setUnidadFilter] = useState([])
   const [activeStatCard, setActiveStatCard] = useState([]) // array for multi-select
   const [sortField, setSortField]       = useState('n__de_oferta')
@@ -149,13 +147,14 @@ export default function OfertasPage() {
 
   // ── All useMemo BEFORE any conditional return ──
 
-  const uniqueEmpresas = useMemo(() => {
-    const names = new Set()
+  // tipoCounts: totals per tipo for the filter cards (from all offers, no filters)
+  const tipoCounts = useMemo(() => {
+    const map = {}
     ofertas.forEach(o => {
-      const name = o._enriched?.companyName || o.properties?.empresa_vinculada_a_oferta || ''
-      if (name.trim()) names.add(name.trim())
+      const t = o.properties?.tipo_de_oferta
+      if (t) map[t] = (map[t] || 0) + 1
     })
-    return [...names].sort((a, b) => a.localeCompare(b, 'es'))
+    return map
   }, [ofertas])
 
   const filtered = useMemo(() => {
@@ -170,16 +169,14 @@ export default function OfertasPage() {
           p.empresa_vinculada_a_oferta].some(f => (f || '').toLowerCase().includes(q))
       })
     }
-    if (statusFilter.length > 0) list = list.filter(o => statusFilter.includes(o.properties?.estado_de_la_oferta_presupuesto))
     if (tipoFilter.length > 0)   list = list.filter(o => tipoFilter.includes(o.properties?.tipo_de_oferta))
-    if (empresaFilter.length > 0) list = list.filter(o => empresaFilter.includes((o._enriched?.companyName || o.properties?.empresa_vinculada_a_oferta || '').trim()))
     if (activeStatCard.length > 0 && !activeStatCard.includes('Total')) list = list.filter(o => activeStatCard.includes(o.properties?.estado_de_la_oferta_presupuesto))
     if (unidadFilter.length > 0) list = list.filter(o => unidadFilter.includes(o.properties?.unidad_de_negocio_oferta || 'Sin asignar'))
     list.sort((a, b) => {
       let aVal, bVal
       if (sortField === '_dealName')    { aVal = a._enriched?.dealName || ''; bVal = b._enriched?.dealName || '' }
       else if (sortField === '_companyName') { aVal = a._enriched?.companyName || a.properties?.empresa_vinculada_a_oferta || ''; bVal = b._enriched?.companyName || b.properties?.empresa_vinculada_a_oferta || '' }
-      else if (sortField === '_score') { aVal = 0; bVal = 0 }  // score sort handled in scoredFiltered
+      else if (sortField === '_score') { aVal = 0; bVal = 0 }
       else { aVal = a.properties?.[sortField] || ''; bVal = b.properties?.[sortField] || '' }
       if (sortField === 'valor_oferta' || sortField === 'n__de_oferta')
         return sortDir === 'asc' ? parseFloat(aVal||0) - parseFloat(bVal||0) : parseFloat(bVal||0) - parseFloat(aVal||0)
@@ -187,7 +184,7 @@ export default function OfertasPage() {
       return sortDir === 'asc' ? cmp : -cmp
     })
     return list
-  }, [ofertas, search, statusFilter, tipoFilter, empresaFilter, activeStatCard, unidadFilter, sortField, sortDir])
+  }, [ofertas, search, tipoFilter, activeStatCard, unidadFilter, sortField, sortDir])
 
 
   // Score computation + final score-level filter
@@ -251,15 +248,14 @@ export default function OfertasPage() {
     else { setSortField(field); setSortDir('asc') }
   }
   function handleStatCard(label) {
-    if (label === 'Total') { setActiveStatCard([]); setStatusFilter([]); return }
+    if (label === 'Total') { setActiveStatCard([]); return }
     setActiveStatCard(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label])
-    setStatusFilter([])  // use cards OR dropdown, not both
   }
   function handleUnidadCard(name) {
     setUnidadFilter(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name])
   }
   function clearAll() {
-    setStatusFilter([]); setTipoFilter([]); setEmpresaFilter([])
+    setTipoFilter([])
     setActiveStatCard([]); setUnidadFilter([]); setSearch('')
     setScoreFilter([])
   }
@@ -281,7 +277,7 @@ export default function OfertasPage() {
   const totalValue       = ofertas.reduce((s, o) => s + parseFloat(o.properties?.valor_oferta || 0), 0)
   const filteredValue    = scoredFiltered.reduce((s, o) => s + parseFloat(o.properties?.valor_oferta || 0), 0)
   const countByStatus    = (status) => scoredFiltered.filter(o => o.properties?.estado_de_la_oferta_presupuesto === status).length
-  const hasFilters = statusFilter.length || tipoFilter.length || empresaFilter.length || activeStatCard.length || unidadFilter.length || search || scoreFilter.length
+  const hasFilters = tipoFilter.length || activeStatCard.length || unidadFilter.length || search || scoreFilter.length
 
   const statusCards = [
     { label: 'Total',       count: scoredFiltered.length,        color: 'text-white' },
@@ -344,6 +340,39 @@ export default function OfertasPage() {
         {statusCards.map(c => (
           <StatCard key={c.label} {...c} active={c.label === 'Total' ? activeStatCard.length === 0 : activeStatCard.includes(c.label)} onClick={() => handleStatCard(c.label)} />
         ))}
+      </div>
+
+      {/* Tipo de Oferta filter cards */}
+      <div className="glass-card rounded-2xl p-5">
+        <h3 className="text-xs font-semibold text-accent-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+          <Briefcase className="w-4 h-4" />Tipo de Oferta
+          <span className="text-steel-500 normal-case font-normal">(multi-selección)</span>
+          {tipoFilter.length > 0 && (
+            <button onClick={() => setTipoFilter([])} className="ml-auto text-steel-500 hover:text-white transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {TIPOS_OFERTA.map(tipo => {
+            const isActive = tipoFilter.includes(tipo)
+            const count = tipoCounts[tipo] || 0
+            return (
+              <button
+                key={tipo}
+                type="button"
+                onClick={() => setTipoFilter(prev => prev.includes(tipo) ? prev.filter(t => t !== tipo) : [...prev, tipo])}
+                style={isActive ? { boxShadow: '0 0 16px rgba(41,182,246,0.55), 0 0 5px rgba(41,182,246,0.3)' } : {}}
+                className={`glass-card rounded-xl px-4 py-3 flex flex-col items-center min-w-[110px] transition-all cursor-pointer border ${
+                  isActive ? 'border-accent-500/70 bg-accent-500/10 scale-[1.03]' : 'border-transparent hover:border-white/10 hover:bg-white/3'
+                }`}
+              >
+                <span className={`text-2xl font-bold tabular-nums ${isActive ? 'text-accent-300' : 'text-white'}`}>{count}</span>
+                <span className="text-[11px] text-steel-400 font-medium mt-0.5 text-center leading-tight">{tipo}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Unidad de negocio breakdown */}
@@ -415,21 +444,16 @@ export default function OfertasPage() {
         </div>
       )}
 
-      {/* Filters row */}
-      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-steel-400 pointer-events-none" />
-          <input
-            id="search-offers" type="text"
-            placeholder="Buscar por nº, negocio, empresa, presupuestador..."
-            value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-surface-700/50 border border-white/8 text-white text-sm placeholder-steel-500 focus:outline-none focus:border-accent-500/50 focus:ring-1 focus:ring-accent-500/25 transition-all"
-          />
-          {search && <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-steel-500 hover:text-white"><X className="w-4 h-4" /></button>}
-        </div>
-        <MultiFilter id="filter-estado"  icon={Tag}      label="Estado"  options={OFFER_STATUSES} selected={statusFilter}  onChange={v => { setStatusFilter(v); setActiveStatCard([]) }} />
-        <MultiFilter id="filter-tipo"    icon={Briefcase} label="Tipo"   options={TIPOS_OFERTA}  selected={tipoFilter}   onChange={setTipoFilter} />
-        <MultiFilter id="filter-empresa" icon={Building2} label="Empresa" options={uniqueEmpresas} selected={empresaFilter} onChange={setEmpresaFilter} />
+      {/* Search bar only */}
+      <div className="relative max-w-lg">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-steel-400 pointer-events-none" />
+        <input
+          id="search-offers" type="text"
+          placeholder="Buscar por nº, negocio, empresa, presupuestador..."
+          value={search} onChange={e => setSearch(e.target.value)}
+          className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-surface-700/50 border border-white/8 text-white text-sm placeholder-steel-500 focus:outline-none focus:border-accent-500/50 focus:ring-1 focus:ring-accent-500/25 transition-all"
+        />
+        {search && <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-steel-500 hover:text-white"><X className="w-4 h-4" /></button>}
       </div>
 
       {hasFilters && (
