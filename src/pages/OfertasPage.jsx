@@ -187,17 +187,6 @@ export default function OfertasPage() {
     return list
   }, [ofertas, search, statusFilter, tipoFilter, empresaFilter, activeStatCard, unidadFilter, sortField, sortDir])
 
-  const unidadStats = useMemo(() => {
-    const map = {}
-    filtered.forEach(o => {
-      const u = o.properties?.unidad_de_negocio_oferta
-      if (!u) return
-      if (!map[u]) map[u] = { count: 0, value: 0 }
-      map[u].count++
-      map[u].value += parseFloat(o.properties?.valor_oferta || 0)
-    })
-    return Object.entries(map).sort((a, b) => b[1].value - a[1].value)
-  }, [filtered])
 
   // Score computation + final score-level filter
   const scoredOffers = useMemo(() => {
@@ -239,6 +228,19 @@ export default function OfertasPage() {
     })
     return counts
   }, [scoredOffers])
+
+  // Unidad stats — from scoredFiltered so it reacts to ALL active filters incl. score
+  const unidadStats = useMemo(() => {
+    const map = {}
+    scoredFiltered.forEach(o => {
+      const u = o.properties?.unidad_de_negocio_oferta
+      if (!u) return
+      if (!map[u]) map[u] = { count: 0, value: 0 }
+      map[u].count++
+      map[u].value += parseFloat(o.properties?.valor_oferta || 0)
+    })
+    return Object.entries(map).sort((a, b) => b[1].value - a[1].value)
+  }, [scoredFiltered])
 
   // ── Handlers ──
 
