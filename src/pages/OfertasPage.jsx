@@ -274,20 +274,13 @@ export default function OfertasPage() {
   }
 
   // ── Derived values (non-hook, safe after all useMemos) ──
-  const totalValue       = ofertas.reduce((s, o) => s + parseFloat(o.properties?.valor_oferta || 0), 0)
-  const filteredValue    = scoredFiltered.reduce((s, o) => s + parseFloat(o.properties?.valor_oferta || 0), 0)
-  const countByStatus    = (status) => scoredFiltered.filter(o => o.properties?.estado_de_la_oferta_presupuesto === status).length
   const hasFilters = tipoFilter.length || activeStatCard.length || unidadFilter.length || search || scoreFilter.length
 
-  const statusCards = [
-    { label: 'Total',       count: scoredFiltered.length,        color: 'text-white' },
-    { label: 'Solicitada',  count: countByStatus('Solicitada'),  color: 'text-blue-400' },
-    { label: 'Asignada',    count: countByStatus('Asignada'),    color: 'text-cyan-400' },
-    { label: 'En revisión', count: countByStatus('En revisión'), color: 'text-pink-400' },
-    { label: 'Ganada',      count: countByStatus('Ganada'),      color: 'text-emerald-400' },
-    { label: 'Desestimada', count: countByStatus('Desestimada'), color: 'text-rose-400' },
-    { label: 'Perdida',     count: countByStatus('Perdida'),     color: 'text-red-500' },
-  ]
+  // ── Derived values ──
+  const totalValue  = ofertas.reduce((s, o) => s + parseFloat(o.properties?.valor_oferta || 0), 0)
+  const filteredValue = scoredFiltered.reduce((s, o) => s + parseFloat(o.properties?.valor_oferta || 0), 0)
+  const countStatusInFiltered = (status) => scoredFiltered.filter(o => o.properties?.estado_de_la_oferta_presupuesto === status).length
+  const totalFiltered = scoredFiltered.length
 
   // ── Render ──
   if (loading) return (
@@ -335,11 +328,52 @@ export default function OfertasPage() {
         </div>
       </div>
 
-      {/* Status summary cards */}
-      <div className="flex flex-wrap gap-2">
-        {statusCards.map(c => (
-          <StatCard key={c.label} {...c} active={c.label === 'Total' ? activeStatCard.length === 0 : activeStatCard.includes(c.label)} onClick={() => handleStatCard(c.label)} />
-        ))}
+      {/* Search bar — FIRST */}
+      <div className="relative max-w-lg">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-steel-400 pointer-events-none" />
+        <input
+          id="search-offers" type="text"
+          placeholder="Buscar por nº, negocio, empresa, presupuestador..."
+          value={search} onChange={e => setSearch(e.target.value)}
+          className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-surface-700/50 border border-white/8 text-white text-sm placeholder-steel-500 focus:outline-none focus:border-accent-500/50 focus:ring-1 focus:ring-accent-500/25 transition-all"
+        />
+        {search && <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-steel-500 hover:text-white"><X className="w-4 h-4" /></button>}
+      </div>
+
+      {/* Estado de Oferta — glass-card with all 13 statuses + Total */}
+      <div className="glass-card rounded-2xl p-5">
+        <h3 className="text-xs font-semibold text-accent-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+          <Filter className="w-4 h-4" />Estado de Oferta
+          <span className="text-steel-500 normal-case font-normal">(multi-selección)</span>
+          {activeStatCard.length > 0 && (
+            <button onClick={() => setActiveStatCard([])} className="ml-auto text-steel-500 hover:text-white transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {/* Total pill */}
+          {[{ value: 'Total', label: 'Total', textColor: 'text-white' },
+            ...OFFER_STATUSES.map(s => ({ value: s.value, label: s.label, textColor: s.color.split(' ')[1] || 'text-steel-300' }))
+          ].map(({ value, label, textColor }) => {
+            const isActive = value === 'Total' ? activeStatCard.length === 0 : activeStatCard.includes(value)
+            const count = value === 'Total' ? totalFiltered : countStatusInFiltered(value)
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => handleStatCard(value)}
+                style={isActive ? { boxShadow: '0 0 16px rgba(41,182,246,0.55), 0 0 5px rgba(41,182,246,0.3)' } : {}}
+                className={`glass-card rounded-xl px-4 py-3 flex flex-col items-center min-w-[90px] transition-all cursor-pointer border ${
+                  isActive ? 'border-accent-500/70 bg-accent-500/10 scale-[1.03]' : 'border-transparent hover:border-white/10 hover:bg-white/3'
+                }`}
+              >
+                <span className={`text-2xl font-bold tabular-nums ${isActive ? 'text-accent-300' : textColor}`}>{count}</span>
+                <span className="text-[11px] text-steel-400 font-medium mt-0.5 text-center leading-tight">{label}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Tipo de Oferta filter cards */}
@@ -444,17 +478,6 @@ export default function OfertasPage() {
         </div>
       )}
 
-      {/* Search bar only */}
-      <div className="relative max-w-lg">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-steel-400 pointer-events-none" />
-        <input
-          id="search-offers" type="text"
-          placeholder="Buscar por nº, negocio, empresa, presupuestador..."
-          value={search} onChange={e => setSearch(e.target.value)}
-          className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-surface-700/50 border border-white/8 text-white text-sm placeholder-steel-500 focus:outline-none focus:border-accent-500/50 focus:ring-1 focus:ring-accent-500/25 transition-all"
-        />
-        {search && <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-steel-500 hover:text-white"><X className="w-4 h-4" /></button>}
-      </div>
 
       {hasFilters && (
         <div className="flex items-center gap-3 text-xs text-steel-400">
