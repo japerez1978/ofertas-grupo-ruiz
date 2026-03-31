@@ -1,0 +1,212 @@
+{
+  "name": "disparar_contador_de_ofertas",
+  "label": "disparar contador de ofertas"
+}
+{
+  "name": "empresa_vinculada_a_oferta",
+  "label": "Empresa vinculada a oferta"
+}
+{
+  "name": "estado_de_la_oferta_presupuesto",
+  "label": "Estado de esta oferta"
+}
+{
+  "name": "fecha_de_creacion_oferta_excel",
+  "label": "Fecha de creación oferta (excel)"
+}
+{
+  "name": "fecha_de_envio_oferta",
+  "label": "Fecha de envio oferta"
+}
+{
+  "name": "fecha_de_oferta_legacy",
+  "label": "Fecha solicitada oferta (Antiguo CRM)"
+}
+{
+  "name": "fecha_envio_oferta",
+  "label": "Fecha envio oferta"
+}
+{
+  "name": "fecha_limite_para_ofertar",
+  "label": "Fecha limite para ofertar"
+}
+{
+  "name": "hs_all_accessible_team_ids",
+  "label": "All teams"
+}
+{
+  "name": "hs_all_assigned_business_unit_ids",
+  "label": "Business units"
+}
+{
+  "name": "hs_all_owner_ids",
+  "label": "All owner IDs"
+}
+{
+  "name": "hs_all_team_ids",
+  "label": "All team IDs"
+}
+{
+  "name": "hs_created_by_user_id",
+  "label": "Created by user ID"
+}
+{
+  "name": "hs_createdate",
+  "label": "Object create date/time"
+}
+{
+  "name": "hs_lastmodifieddate",
+  "label": "Object last modified date/time"
+}
+{
+  "name": "hs_merged_object_ids",
+  "label": "Merged record IDs"
+}
+{
+  "name": "hs_object_id",
+  "label": "Record ID"
+}
+{
+  "name": "hs_object_source",
+  "label": "Record creation source"
+}
+{
+  "name": "hs_object_source_detail_1",
+  "label": "Record source detail 1"
+}
+{
+  "name": "hs_object_source_detail_2",
+  "label": "Record source detail 2"
+}
+{
+  "name": "hs_object_source_detail_3",
+  "label": "Record source detail 3"
+}
+{
+  "name": "hs_object_source_id",
+  "label": "Record creation source ID"
+}
+{
+  "name": "hs_object_source_label",
+  "label": "Record source"
+}
+{
+  "name": "hs_object_source_user_id",
+  "label": "Record creation source user ID"
+}
+{
+  "name": "hs_owning_teams",
+  "label": "Owning Teams"
+}
+{
+  "name": "hs_pinned_engagement_id",
+  "label": "Pinned Engagement ID"
+}
+{
+  "name": "hs_pipeline",
+  "label": "Oferta pipeline"
+}
+{
+  "name": "hs_pipeline_stage",
+  "label": "Oferta pipeline stage"
+}
+{
+  "name": "hs_read_only",
+  "label": "Read only object"
+}
+{
+  "name": "hs_shared_team_ids",
+  "label": "Shared teams"
+}
+{
+  "name": "hs_shared_user_ids",
+  "label": "Shared users"
+}
+{
+  "name": "hs_unique_creation_key",
+  "label": "Unique creation key"
+}
+{
+  "name": "hs_updated_by_user_id",
+  "label": "Updated by user ID"
+}
+{
+  "name": "hs_user_ids_of_all_notification_followers",
+  "label": "User IDs of all notification followers"
+}
+{
+  "name": "hs_user_ids_of_all_notification_unfollowers",
+  "label": "User IDs of all notification unfollowers"
+}
+{
+  "name": "hs_user_ids_of_all_owners",
+  "label": "User IDs of all owners"
+}
+{
+  "name": "hs_was_imported",
+  "label": "Performed in an import"
+}
+{
+  "name": "hubspot_owner_assigneddate",
+  "label": "Owner assigned date"
+}
+{
+  "name": "hubspot_owner_id",
+  "label": "Owner"
+}
+{
+  "name": "hubspot_team_id",
+  "label": "Owner's main team"
+}
+{
+  "name": "id_oferta",
+  "label": "id oferta"
+}
+{
+  "name": "migracion",
+  "label": "migracion oferta"
+}
+{
+  "name": "motivo_de_revision",
+  "label": "Motivo de revisión"
+}
+{
+  "name": "n__de_oferta",
+  "label": "Nº de oferta nuevo"
+}
+{
+  "name": "numero_de_oferta_heredado",
+  "label": "Numero de oferta heredado"
+}
+{
+  "name": "presupuestador_asignado",
+  "label": "Presupuestador asignado Oferta"
+}
+{
+  "name": "prioridad_para_ofertar",
+  "label": "prioridad para ofertar"
+}
+{
+  "name": "tipo_de_oferta",
+  "label": "Tipo de oferta"
+}
+{
+  "name": "ultimo_n_de_oferta_en_uso",
+  "label": "Ultimo nº de oferta en uso."
+}
+{
+  "name": "ultimo_n_de_oferta_usado",
+  "label": "Último nº de oferta usado."
+}
+{
+  "name": "ultimo_numero_de_oferta_usado",
+  "label": "Ultimo numero de oferta usado"
+}
+{
+  "name": "unidad_de_negocio_oferta",
+  "label": "Unidad de negocio oferta."
+}
+{
+  "name": "valor_oferta",
+  "label": "Valor oferta"
+}
