@@ -413,9 +413,32 @@ export default function OfertasPage() {
       {unidadStats.length > 0 && (
         <div className="glass-card rounded-2xl p-5">
           <h3 className="text-xs font-semibold text-accent-400 uppercase tracking-wider flex items-center gap-2 mb-3">
-            <Layers className="w-4 h-4" />Resumen por Unidad de Negocio <span className="text-steel-500 normal-case font-normal">(pincha para filtrar)</span>
+            <Layers className="w-4 h-4" />Unidad de Negocio <span className="text-steel-500 normal-case font-normal">(pincha para filtrar)</span>
+            {unidadFilter.length > 0 && (
+              <button onClick={() => setUnidadFilter([])} className="ml-auto text-steel-500 hover:text-white transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            {/* Grupo Ruiz — global "all units" card */}
+            {(() => {
+              const globalActive = unidadFilter.length === 0
+              const globalCount = unidadStats.reduce((s, [, st]) => s + st.count, 0)
+              const globalValue = unidadStats.reduce((s, [, st]) => s + st.value, 0)
+              return (
+                <button
+                  type="button"
+                  onClick={() => setUnidadFilter([])}
+                  style={globalActive ? { boxShadow: '0 0 18px rgba(41,182,246,0.6), 0 0 6px rgba(41,182,246,0.3)' } : {}}
+                  className={`flex flex-col px-4 py-3 rounded-xl border text-left transition-all ${globalActive ? 'border-accent-500/70 bg-accent-500/10 scale-[1.02]' : 'border-white/5 bg-surface-800/60 hover:border-white/15 hover:bg-white/3'}`}
+                >
+                  <p className={`text-sm font-bold truncate ${globalActive ? 'text-accent-300' : 'text-white'}`}>Grupo Ruiz</p>
+                  <p className="text-steel-500 text-xs">{globalCount} oferta{globalCount !== 1 ? 's' : ''}</p>
+                  <p className="text-emerald-400 font-semibold text-xs mt-1 tabular-nums">{formatCurrency(globalValue)}</p>
+                </button>
+              )
+            })()}
             {unidadStats.map(([name, stats]) => (
               <button
                 key={name}
