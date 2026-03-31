@@ -421,7 +421,7 @@ export default function OfertasPage() {
             )}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            {/* Grupo Ruiz — global "all units" card */}
+            {/* Grupo Ruiz — global "all units" highlighted card */}
             {(() => {
               const globalActive = unidadFilter.length === 0
               const globalCount = unidadStats.reduce((s, [, st]) => s + st.count, 0)
@@ -430,12 +430,24 @@ export default function OfertasPage() {
                 <button
                   type="button"
                   onClick={() => setUnidadFilter([])}
-                  style={globalActive ? { boxShadow: '0 0 18px rgba(41,182,246,0.6), 0 0 6px rgba(41,182,246,0.3)' } : {}}
-                  className={`flex flex-col px-4 py-3 rounded-xl border text-left transition-all ${globalActive ? 'border-accent-500/70 bg-accent-500/10 scale-[1.02]' : 'border-white/5 bg-surface-800/60 hover:border-white/15 hover:bg-white/3'}`}
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(120,20,20,0.35) 0%, rgba(60,8,8,0.15) 100%)',
+                    boxShadow: globalActive
+                      ? '0 0 22px rgba(163,41,41,0.55), 0 0 8px rgba(163,41,41,0.3), inset 0 1px 0 rgba(255,255,255,0.06)'
+                      : '0 2px 12px rgba(0,0,0,0.3)',
+                  }}
+                  className={`col-span-2 flex items-center gap-4 px-5 py-4 rounded-xl border text-left transition-all duration-300 ${
+                    globalActive
+                      ? 'border-red-700/60 scale-[1.01]'
+                      : 'border-red-900/30 hover:border-red-800/50 hover:scale-[1.01]'
+                  }`}
                 >
-                  <p className={`text-sm font-bold truncate ${globalActive ? 'text-accent-300' : 'text-white'}`}>Grupo Ruiz</p>
-                  <p className="text-steel-500 text-xs">{globalCount} oferta{globalCount !== 1 ? 's' : ''}</p>
-                  <p className="text-emerald-400 font-semibold text-xs mt-1 tabular-nums">{formatCurrency(globalValue)}</p>
+                  <img src="/logo.png" alt="Grupo Ruiz" className="w-10 h-10 rounded-lg object-contain shrink-0 opacity-90" />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-base font-bold ${globalActive ? 'text-red-300' : 'text-white/90'}`}>Grupo Ruiz</p>
+                    <p className="text-steel-400 text-xs">{globalCount} oferta{globalCount !== 1 ? 's' : ''} · todas las unidades</p>
+                  </div>
+                  <p className="text-emerald-400 font-bold text-sm tabular-nums shrink-0">{formatCurrency(globalValue)}</p>
                 </button>
               )
             })()}
