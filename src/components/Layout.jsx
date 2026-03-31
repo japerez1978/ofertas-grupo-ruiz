@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, Sliders } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Sliders, Zap } from 'lucide-react'
 
 const navItems = [
   { to: '/', label: 'Ofertas', icon: LayoutDashboard },
