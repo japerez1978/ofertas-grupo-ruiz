@@ -42,7 +42,8 @@ function MultiFilter({ id, icon: Icon, label, options, selected, onChange }) {
       <button
         type="button" id={id}
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all border ${selected.length > 0 ? 'bg-accent-500/15 border-accent-500/40 text-accent-300' : 'bg-surface-700/50 border-white/8 text-steel-400 hover:text-white hover:border-white/15'}`}
+      className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all border ${selected.length > 0 ? 'bg-accent-500/15 border-accent-500/60 text-accent-300' : 'bg-surface-700/50 border-white/8 text-steel-400 hover:text-white hover:border-white/15'}`}
+        style={selected.length > 0 ? { boxShadow: '0 0 14px rgba(41,182,246,0.45), 0 0 3px rgba(41,182,246,0.25)' } : {}}
       >
         <Icon className="w-4 h-4" />
         {label}
@@ -79,7 +80,8 @@ function StatCard({ label, count, color, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`glass-card rounded-xl px-4 py-3 flex flex-col items-center min-w-[90px] transition-all cursor-pointer border ${active ? 'border-accent-500/50 bg-accent-500/10 scale-[1.03]' : 'border-transparent hover:border-white/10 hover:bg-white/3'}`}
+      style={active ? { boxShadow: '0 0 16px rgba(41,182,246,0.55), 0 0 4px rgba(41,182,246,0.3)' } : {}}
+      className={`glass-card rounded-xl px-4 py-3 flex flex-col items-center min-w-[90px] transition-all cursor-pointer border ${active ? 'border-accent-500/70 bg-accent-500/10 scale-[1.03]' : 'border-transparent hover:border-white/10 hover:bg-white/3'}`}
     >
       <span className={`text-2xl font-bold tabular-nums ${color}`}>{count}</span>
       <span className="text-[11px] text-steel-400 font-medium mt-0.5 text-center leading-tight">{label}</span>
@@ -355,7 +357,8 @@ export default function OfertasPage() {
                 key={name}
                 type="button"
                 onClick={() => handleUnidadCard(name)}
-                className={`flex flex-col px-4 py-3 rounded-xl border text-left transition-all ${unidadFilter === name ? 'border-accent-500/50 bg-accent-500/10 scale-[1.02]' : 'border-white/5 bg-surface-800/60 hover:border-white/15 hover:bg-white/3'}`}
+                style={unidadFilter === name ? { boxShadow: '0 0 16px rgba(41,182,246,0.55), 0 0 5px rgba(41,182,246,0.3)' } : {}}
+                className={`flex flex-col px-4 py-3 rounded-xl border text-left transition-all ${unidadFilter === name ? 'border-accent-500/70 bg-accent-500/10 scale-[1.02]' : 'border-white/5 bg-surface-800/60 hover:border-white/15 hover:bg-white/3'}`}
               >
                 <p className="text-white text-sm font-medium truncate">{name}</p>
                 <p className="text-steel-500 text-xs">{stats.count} oferta{stats.count !== 1 ? 's' : ''}</p>
@@ -380,10 +383,10 @@ export default function OfertasPage() {
           </h3>
           <div className="flex flex-wrap gap-3">
             {[
-              { label: 'Alto',  dot: '🟢', color: 'text-emerald-400', border: 'border-emerald-500/40', activeBg: 'bg-emerald-500/15' },
-              { label: 'Medio', dot: '🟡', color: 'text-amber-400',   border: 'border-amber-500/40',   activeBg: 'bg-amber-500/15'   },
-              { label: 'Bajo',  dot: '🔴', color: 'text-red-400',     border: 'border-red-500/40',     activeBg: 'bg-red-500/15'     },
-            ].map(({ label, dot, color, border, activeBg }) => {
+              { label: 'Alto',  dot: '🟢', color: 'text-emerald-400', border: 'border-emerald-500/70', activeBg: 'bg-emerald-500/15', neon: '0 0 16px rgba(52,211,153,0.6), 0 0 5px rgba(52,211,153,0.3)' },
+              { label: 'Medio', dot: '🟡', color: 'text-amber-400',   border: 'border-amber-500/70',   activeBg: 'bg-amber-500/15',   neon: '0 0 16px rgba(251,191,36,0.6), 0 0 5px rgba(251,191,36,0.3)' },
+              { label: 'Bajo',  dot: '🔴', color: 'text-red-400',     border: 'border-red-500/70',     activeBg: 'bg-red-500/15',     neon: '0 0 16px rgba(248,113,113,0.6), 0 0 5px rgba(248,113,113,0.3)' },
+            ].map(({ label, dot, color, border, activeBg, neon }) => {
               const isActive = scoreFilter === label
               const count = scoreCounts[label] || 0
               return (
@@ -391,6 +394,7 @@ export default function OfertasPage() {
                   key={label}
                   type="button"
                   onClick={() => setScoreFilter(prev => prev === label ? null : label)}
+                  style={isActive ? { boxShadow: neon } : {}}
                   className={`flex items-center gap-3 px-5 py-3 rounded-xl border transition-all ${
                     isActive
                       ? `${activeBg} ${border} scale-[1.03]`
