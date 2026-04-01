@@ -194,13 +194,14 @@ export default function CrearOfertaPage() {
     if (isNaN(numericValue)) return
     
     try {
-      // Sincronizamos a la propiedad solicitada (tipo número)
+      // Sincronizamos a las 3 propiedades que Juan tiene relacionadas en el Deal
+      // para asegurar que lo vea en HubSpot use la que use.
       await patchDeal(dealId, { 
         numero_de_oferta_disponible: numericValue,
-        // Opcional: También sincronizamos a "Numero de oferta activa" si existe
-        // numero_de_oferta_activa: numericValue
+        numero_de_oferta_activa: numericValue,
+        n_de_oferta_inicial_deal: numericValue
       })
-      console.log(`[Sync] nº ${numericValue} sincronizado con Deal ${dealId}`)
+      console.log(`[Sync] nº ${numericValue} sincronizado con Deal ${dealId} (3 props)`)
     } catch (err) { 
       console.error('Error syncing number to deal:', err) 
     }
