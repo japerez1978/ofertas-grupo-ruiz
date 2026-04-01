@@ -25,6 +25,8 @@ import {
   searchObras,
   getVersionesOferta,
   associateOferta,
+  patchDeal,
+  request, // Added to handle fetching single deal if needed
 } from '../services/hubspot'
 import { OFFER_STATUSES, PRESUPUESTADORES, TIPOS_OFERTA, UNIDADES_NEGOCIO } from '../utils/helpers'
 import Toast from '../components/Toast'
@@ -185,54 +187,79 @@ export default function CrearOfertaPage() {
   const [toast, setToast] = useState(null)
   const [loadingNumber, setLoadingNumber] = useState(true)
 
-  // Load initial offer number on mount
-  useEffect(() => {
-    async function loadNumber() {
+  // Sync "Numero de oferta disponible" to HSA Deal
+  const syncOfferNumberToDeal = useCallback(async (dealId, num) => {
+    if (!dealId || !num) return
+    try {
+      await patchDeal(dealId, { numero_de_oferta_disponible: String(num) })
+    } catch (err) { console.error('Error syncing number to deal:', err) }
+  }, [])
+
+  // When a deal is selected, fetch its versions to update the offer number
+  const handleDealSelect = useCallback(async (deal, forcedNumber = null) => {
+    setSelectedDeal(deal)
+    const dealName = deal.properties?.dealname || deal.dealname || deal.name || ''
+    setForm((prev) => ({ ...prev, dealname: dealName }))
+
+    let numberToUse = forcedNumber
+    if (!numberToUse) {
       try {
-        const data = await getUltimoNumeroOferta()
-        const next = (data?.ultimo || data?.numero || 0) + 1
-        setForm((prev) => ({
-          ...prev,
-          n_de_oferta_inicial_deal: next,
-          numero_de_oferta_activa: next,
-        }))
+        const versiones = await getVersionesOferta(deal.id)
+        numberToUse = (versiones?.siguiente || versiones?.next || versiones?.count + 1 || 1)
       } catch {
-        setForm((prev) => ({
-          ...prev,
-          n_de_oferta_inicial_deal: 1,
-          numero_de_oferta_activa: 1,
-        }))
-      } finally {
-        setLoadingNumber(false)
+        numberToUse = 1
       }
     }
+
+    setForm((prev) => ({
+      ...prev,
+      n_de_oferta_inicial_deal: String(numberToUse),
+      numero_de_oferta_activa: String(numberToUse),
+    }))
+
+    // Sync to HubSpot deal property immediately
+    syncOfferNumberToDeal(deal.id, numberToUse)
+  }, [syncOfferNumberToDeal])
+
+  // Load initial offer number on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const urlDealId = params.get('dealId')
+
+    async function loadNumber() {
+      let next = 1
+      try {
+        const data = await getUltimoNumeroOferta()
+        next = (data?.ultimo || data?.numero || 0) + 1
+      } catch (err) { console.error('Error fetching last number:', err) }
+
+      setForm((prev) => ({
+        ...prev,
+        n_de_oferta_inicial_deal: String(next),
+        numero_de_oferta_activa: String(next),
+      }))
+
+      // If we have a deal from URL, fetch it and select it
+      if (urlDealId) {
+        try {
+          const deal = await request(`/proxy/crm/v3/objects/deals/${urlDealId}?properties=dealname`)
+          handleDealSelect(deal, next)
+        } catch (err) { console.error('Error fetching pre-selected deal:', err) }
+      }
+      setLoadingNumber(false)
+    }
     loadNumber()
-  }, [])
+  }, [handleDealSelect])
 
   function handleChange(e) {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
-  }
-
-  // When a deal is selected, fetch its versions to update the offer number
-  const handleDealSelect = useCallback(async (deal) => {
-    setSelectedDeal(deal)
-    // Update dealname from deal
-    const dealName = deal.properties?.dealname || deal.dealname || deal.name || ''
-    setForm((prev) => ({ ...prev, dealname: dealName }))
-
-    try {
-      const versiones = await getVersionesOferta(deal.id)
-      const nextVersion = (versiones?.siguiente || versiones?.next || versiones?.count + 1 || 1)
-      setForm((prev) => ({
-        ...prev,
-        n_de_oferta_inicial_deal: nextVersion,
-        numero_de_oferta_activa: nextVersion,
-      }))
-    } catch {
-      // Keep current number if version check fails
+    
+    // Si cambia el número manual, sincronizamos con el negocio si hay uno seleccionado
+    if (selectedDeal && (name === 'n_de_oferta_inicial_deal' || name === 'numero_de_oferta_activa')) {
+      syncOfferNumberToDeal(selectedDeal.id, value)
     }
-  }, [])
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()

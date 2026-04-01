@@ -1,6 +1,6 @@
 const API_BASE = 'https://intranox-proxy-production.up.railway.app';
 
-async function request(endpoint, options = {}) {
+export async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
   const config = {
     headers: {
@@ -154,6 +154,14 @@ export async function writeDealScore(dealId, score) {
   return request(`/proxy/crm/v1/objects/deals/${dealId}`, {
     method: 'PATCH',
     body: JSON.stringify({ properties: { score_rcm: String(score) } })
+  });
+}
+
+/** Actualiza propiedades de un Deal directamente en HubSpot */
+export async function patchDeal(id, properties) {
+  return request(`/proxy/crm/v3/objects/deals/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ properties }),
   });
 }
 
