@@ -8,13 +8,17 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 // Configurable por variable de entorno por despliegue
 export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'intranox'
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+// Solo crear el cliente si las credenciales están presentes (evita crash en Vercel sin env vars)
+export const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null
 
 // Cache en memoria del tenant_id para no hacer múltiples queries
 let _tenantId = null
 
 /** Busca el tenant_id en Supabase por su subdominio */
 async function getTenantId() {
+  if (!supabase) throw new Error('Supabase no configurado (faltan variables de entorno)')
   if (_tenantId) return _tenantId
 
   const { data, error } = await supabase
