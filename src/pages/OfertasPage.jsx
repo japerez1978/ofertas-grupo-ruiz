@@ -389,10 +389,8 @@ export default function OfertasPage() {
       Medio: { count: 0, value: 0 }, 
       Bajo:  { count: 0, value: 0 } 
     }
-    // We want the score summaries to update with OTHER filters 
-    // BUT maybe not with themselves to avoid 'bliking' all to 0
-    // Actually, user asked to update with ALL filters.
-    filtered.forEach(o => {
+    // IMPORTANTE: Usar scoredOffers porque es la lista que YA TIENE el cálculo de score
+    scoredOffers.forEach(o => {
       const label = o._score?.label
       if (label && stats[label]) {
         stats[label].count++
@@ -400,7 +398,7 @@ export default function OfertasPage() {
       }
     })
     return stats
-  }, [filtered])
+  }, [scoredOffers])
 
   const { unidadStats } = useMemo(() => {
     const uMap = {}
