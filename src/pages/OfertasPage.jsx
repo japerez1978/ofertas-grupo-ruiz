@@ -125,6 +125,7 @@ const COLUMNS = [
 function MultiFilter({ id, icon: Icon, label, options, selected, onChange }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  
   useEffect(() => {
     function handleClick(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false)
@@ -132,45 +133,70 @@ function MultiFilter({ id, icon: Icon, label, options, selected, onChange }) {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
   function toggle(val) {
     onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val])
   }
+
   return (
     <div className="relative" ref={ref}>
       <button
         type="button" id={id}
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center justify-between gap-2 px-4 py-3 rounded-xl text-xs font-semibold transition-all border min-w-[170px] ${selected.length > 0 ? 'bg-accent-500/15 border-accent-500/60 text-accent-300' : 'bg-surface-700/50 border-white/8 text-steel-400 hover:text-white hover:border-white/15'}`}
-        style={selected.length > 0 ? { boxShadow: '0 0 14px rgba(41,182,246,0.45)' } : {}}
+        className={`inline-flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border min-w-[180px] ${selected.length > 0 ? 'bg-accent-500/20 border-accent-500/60 text-accent-300' : 'bg-surface-700/50 border-white/8 text-steel-400 hover:text-white hover:border-white/15'}`}
+        style={selected.length > 0 ? { boxShadow: '0 0 15px rgba(41,182,246,0.25)' } : {}}
       >
-        <div className="flex items-center gap-2">
-          <Icon className="w-4 h-4 shrink-0" />
-          <span>{label}</span>
+        <div className="flex items-center gap-2 truncate">
+          <Icon className={`w-3.5 h-3.5 shrink-0 ${selected.length > 0 ? 'text-accent-400' : 'text-steel-600'}`} />
+          <span className="truncate">{label}</span>
           {selected.length > 0 && (
-            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent-500 text-white text-[9px] font-bold">{selected.length}</span>
+            <span className="inline-flex items-center justify-center min-w-[16px] h-4 rounded-full bg-accent-500 text-white text-[9px] font-black px-1">{selected.length}</span>
           )}
         </div>
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
+      
       {open && (
-        <div className="absolute z-50 mt-1 w-64 max-h-72 overflow-y-auto rounded-xl bg-surface-700 border border-white/10 shadow-2xl py-1 left-1/2 -translate-x-1/2">
-          <div className="sticky top-0 bg-surface-700 px-3 py-2 border-b border-white/5 flex justify-between items-center">
-            <span className="text-[10px] text-steel-500 uppercase font-bold">{label}</span>
-            <button onClick={() => onChange([])} className="text-[10px] text-accent-400 hover:text-accent-300">Limpiar</button>
+        <div className="absolute z-[100] mt-1.5 w-64 max-h-[350px] overflow-hidden rounded-xl bg-surface-700 border border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6)] flex flex-col left-1/2 -translate-x-1/2 animate-scale-in">
+          <div className="sticky top-0 z-10 bg-surface-800/90 backdrop-blur-md px-3 py-2 border-b border-white/5 flex justify-between items-center">
+            <span className="text-[9px] text-steel-500 uppercase font-black tracking-widest">{label}</span>
+            <button 
+              type="button"
+              onMouseDown={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                console.log('Limpiando filter:', id);
+                onChange([]); 
+              }}
+              className="text-[9px] font-black text-accent-500 hover:text-accent-400 px-2 py-1 bg-accent-500/5 rounded-md transition-colors"
+            >
+              LIMPIAR
+            </button>
           </div>
-          {options.length === 0 ? (
-            <p className="px-4 py-3 text-xs text-steel-500 italic text-center">Sin opciones disponibles</p>
-          ) : options.map(opt => {
-            const val = typeof opt === 'string' ? opt : opt.value
-            const lbl = typeof opt === 'string' ? opt : opt.label
-            const isChecked = selected.includes(val)
-            return (
-              <label key={val} className={`flex items-center gap-2.5 px-4 py-2 text-xs cursor-pointer transition-colors ${isChecked ? 'text-white bg-accent-500/10' : 'text-steel-300 hover:bg-white/5 hover:text-white'}`}>
-                <input type="checkbox" checked={isChecked} onChange={() => toggle(val)} className="w-3.5 h-3.5 rounded border-white/20 bg-surface-800 text-accent-500 focus:ring-0 cursor-pointer" />
-                <span className="line-clamp-2">{lbl}</span>
-              </label>
-            )
-          })}
+          <div className="overflow-y-auto flex-1 py-1 custom-scrollbar">
+            {options.length === 0 ? (
+              <p className="px-4 py-6 text-xs text-steel-500 italic text-center">Sin opciones...</p>
+            ) : options.map(opt => {
+              const val = typeof opt === 'string' ? opt : opt.value
+              const lbl = typeof opt === 'string' ? opt : opt.label
+              const isChecked = selected.includes(val)
+              return (
+                <label 
+                  key={val} 
+                  className={`flex items-center gap-3 px-4 py-2.5 text-[10px] font-bold border-l-2 transition-all cursor-pointer ${isChecked ? 'text-white bg-accent-500/10 border-accent-500' : 'text-steel-400 hover:bg-white/5 hover:text-white border-transparent'}`}
+                >
+                  <input 
+                    type="checkbox" 
+                    checked={isChecked} 
+                    onChange={() => toggle(val)} 
+                    className="w-4 h-4 rounded border-white/20 bg-surface-800 text-accent-500 focus:ring-0 cursor-pointer" 
+                  />
+                  <span className="uppercase tracking-tighter leading-tight break-words">{lbl}</span>
+                  {isChecked && <Check className="w-3.5 h-3.5 ml-auto text-accent-400 shrink-0" />}
+                </label>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -552,7 +578,7 @@ export default function OfertasPage() {
           )}
         </div>
 
-        <div className="flex flex-wrap justify-center gap-3">
+        <div className="flex flex-wrap justify-center items-center gap-4">
           <MultiFilter
             id="filter-estado-partida"
             icon={Zap}
@@ -577,43 +603,25 @@ export default function OfertasPage() {
             selected={tipoFilter}
             onChange={setTipoFilter}
           />
+          <MultiFilter
+            id="filter-estado-oferta"
+            icon={Check}
+            label="Estado Oferta"
+            options={OFFER_STATUSES.map(s => ({ value: s.value, label: s.label }))}
+            selected={activeStatCard}
+            onChange={setActiveStatCard}
+          />
+          {(search || tipoFilter.length || estadoPartidaFilter.length || tipoPartidaFilter.length || activeStatCard.length || unidadFilter.length || scoreFilter.length) ? (
+            <button 
+              onClick={clearAll} 
+              className="px-4 py-2 text-[10px] font-black text-red-400 hover:text-red-300 transition-colors flex items-center gap-2 bg-red-500/5 hover:bg-red-500/10 rounded-xl border border-red-500/20"
+            >
+              <X className="w-3.5 h-3.5" /> LIMPIAR TODO
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {/* Estado de Oferta — glass-card with all 13 statuses + Total */}
-      <div className="glass-card rounded-2xl p-5">
-        <h3 className="text-xs font-semibold text-accent-400 uppercase tracking-wider flex items-center gap-2 mb-3">
-          <Filter className="w-4 h-4" />Estado de Oferta
-          <span className="text-steel-500 normal-case font-normal">(multi-selección)</span>
-          {activeStatCard.length > 0 && (
-            <button onClick={() => setActiveStatCard([])} className="ml-auto text-steel-500 hover:text-white transition-colors">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </h3>
-        <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          {[{ value: 'Total', label: 'Total', textColor: 'text-white' },
-            ...OFFER_STATUSES.map(s => ({ value: s.value, label: s.label, textColor: s.color.split(' ')[1] || 'text-steel-300' }))
-          ].map(({ value, label, textColor }) => {
-            const isActive = value === 'Total' ? activeStatCard.length === 0 : activeStatCard.includes(value)
-            const count = value === 'Total' ? totalFiltered : countStatusInFiltered(value)
-            return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => handleStatCard(value)}
-                style={isActive ? { boxShadow: '0 0 14px rgba(41,182,246,0.5), 0 0 4px rgba(41,182,246,0.25)' } : {}}
-                className={`glass-card rounded-lg px-2.5 py-2 flex flex-col items-center shrink-0 transition-all cursor-pointer border ${
-                  isActive ? 'border-accent-500/70 bg-accent-500/10 scale-[1.03]' : 'border-transparent hover:border-white/10 hover:bg-white/3'
-                }`}
-              >
-                <span className={`text-lg font-bold tabular-nums leading-none ${isActive ? 'text-accent-300' : textColor}`}>{count}</span>
-                <span className="text-[9px] text-steel-400 font-medium mt-0.5 text-center leading-tight whitespace-nowrap">{label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
 
       {/* Tipo de Oferta filter cards */}
       <div className="glass-card rounded-2xl p-5">
@@ -828,7 +836,7 @@ export default function OfertasPage() {
                     <td className="px-4 py-3.5 text-steel-300 text-xs max-w-[140px] truncate" title={e.companyName}>{e.companyName || '—'}</td>
                     <td className="px-4 py-3.5 text-center">
                       <div className="flex flex-col items-center">
-                        <span className="text-emerald-400 font-bold text-xs">{dp.score_rcm || '—'}</span>
+                        <span className="text-emerald-400 font-bold text-xs">{dp.peso_total_cmr_toneladas ? `${dp.peso_total_cmr_toneladas} Tn` : '—'}</span>
                         {scoreResult && (
                           <span className={`text-[9px] font-bold ${scoreResult.color}`}>{scoreResult.score}%</span>
                         )}
