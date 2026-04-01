@@ -69,9 +69,9 @@ function StatusEditor({ ofertaId, currentStatus, onUpdate }) {
         type="button"
         onClick={() => !saving && setOpen(!open)}
         title="Clic para cambiar estado"
-        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer select-none
+        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter transition-all cursor-pointer select-none
           ${badge.color}
-          ${saving ? 'opacity-60 cursor-wait' : 'hover:ring-2 hover:ring-white/25 hover:scale-105 active:scale-95'}
+          ${saving ? 'opacity-60 cursor-wait' : 'hover:scale-105 active:scale-95 border border-white/5 shadow-sm'}
         `}
       >
         {saving
@@ -108,20 +108,20 @@ function StatusEditor({ ofertaId, currentStatus, onUpdate }) {
 const TIPOS_OFERTA = ['Exploración', 'Oferta Matriz (Inicial)', 'Repetición', 'Revisión', 'Ampliación', 'Modificación']
 
 const COLUMNS = [
-  { field: 'n__de_oferta', label: 'Nº Ofert' },
-  { field: 'numero_de_oferta_heredado', label: 'Hered' },
-  { field: '_unidad', label: 'Unidad' },
+  { field: 'n__de_oferta', label: 'Nº' },
+  { field: 'numero_de_oferta_heredado', label: 'Her.' },
+  { field: '_unidad', label: 'Unid.' },
   { field: '_dealName', label: 'Negocio' },
   { field: '_stage', label: 'Etapa' },
   { field: '_companyName', label: 'Empresa' },
-  { field: 'peso_total_cmr_toneladas', label: 'Peso Tn' },
-  { field: '_fechaObj', label: 'Fecha Obj' },
-  { field: '_provincia', label: 'Prov' },
-  { field: '_tipoPartida', label: 'Tipo Partida' },
-  { field: '_estadoPartida', label: 'Est Partida' },
-  { field: 'tipo_de_oferta', label: 'Tipo Ofert' },
+  { field: 'peso_total_cmr_toneladas', label: 'Peso' },
+  { field: '_fechaObj', label: 'F. Obj' },
+  { field: '_provincia', label: 'Prv' },
+  { field: '_tipoPartida', label: 'T.Part' },
+  { field: '_estadoPartida', label: 'E.Part' },
+  { field: 'tipo_de_oferta', label: 'T.Ofer' },
   { field: 'estado_de_la_oferta_presupuesto', label: 'Estado' },
-  { field: '_score', label: 'Score' },
+  { field: '_score', label: 'Scr' },
 ]
 
 function MultiFilter({ id, icon: Icon, label, options, selected, onChange }) {
@@ -810,10 +810,10 @@ export default function OfertasPage() {
               <tr className="border-b border-white/6 bg-white/2">
                 {COLUMNS.map(({ field, label }) => (
                   <th key={field} onClick={() => toggleSort(field)}
-                    className="text-left px-2 py-2 text-steel-500 font-black tracking-tighter uppercase text-[9px] cursor-pointer hover:text-white transition-colors select-none">
-                    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                    className="text-left px-1 py-1.5 text-steel-500 font-extrabold tracking-tighter uppercase text-[8px] cursor-pointer hover:text-white transition-colors select-none">
+                    <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
                       {label}
-                      <ArrowUpDown className={`w-2.5 h-2.5 ${sortField === field ? 'text-accent-400' : 'text-steel-800'}`} />
+                      <ArrowUpDown className={`w-2 h-2 ${sortField === field ? 'text-accent-400' : 'text-steel-800'}`} />
                     </span>
                   </th>
                 ))}
@@ -833,48 +833,48 @@ export default function OfertasPage() {
 
                 return (
                   <tr key={oferta.id} className="hover:bg-white/3 transition-colors group" style={{ animationDelay: `${i * 5}ms` }}>
-                    <td className="px-2 py-1">
+                    <td className="px-1 py-0.5">
                       <a
                         href={hsOfertaUrl(oferta.id)}
                         target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center w-7 h-7 rounded bg-navy-900/50 border border-accent-500/20 text-accent-400 text-[9px] font-black hover:bg-accent-500/15 transition-all"
+                        className="inline-flex items-center justify-center w-6 h-6 rounded bg-navy-900/50 border border-accent-500/20 text-accent-400 text-[8px] font-black hover:bg-accent-500/15 transition-all"
                       >
                         {p.n__de_oferta || '—'}
                       </a>
                     </td>
-                    <td className="px-2 py-1 text-steel-400 text-[9px] tabular-nums font-medium">{p.numero_de_oferta_heredado || '—'}</td>
-                    <td className="px-2 py-1 text-steel-300 text-[9px] font-bold truncate max-w-[80px]" title={dp.unidad_de_negocio_deal}>{dp.unidad_de_negocio_deal || '—'}</td>
-                    <td className="px-3 py-1 font-medium text-white max-w-[280px]">
+                    <td className="px-1 py-0.5 text-steel-500 text-[8px] tabular-nums font-medium">{p.numero_de_oferta_heredado || '—'}</td>
+                    <td className="px-1 py-0.5 text-steel-300 text-[8px] font-bold truncate max-w-[50px]" title={dp.unidad_de_negocio_deal}>{dp.unidad_de_negocio_deal || '—'}</td>
+                    <td className="px-1.5 py-0.5 font-bold text-white max-w-[180px]">
                       {e.dealName ? (
                         dealId ? (
-                          <a href={hsDealUrl(dealId)} target="_blank" rel="noopener noreferrer" className="hover:text-accent-300 transition-colors line-clamp-2 leading-tight text-[9px]">
+                          <a href={hsDealUrl(dealId)} target="_blank" rel="noopener noreferrer" className="hover:text-accent-300 transition-colors line-clamp-2 leading-tight text-[8px]">
                             {e.dealName}
                           </a>
-                        ) : <span className="line-clamp-2 leading-tight text-[9px]">{e.dealName}</span>
+                        ) : <span className="line-clamp-2 leading-tight text-[8px]">{e.dealName}</span>
                       ) : '—'}
                     </td>
-                    <td className="px-3 py-1 text-steel-400 text-[9px] truncate max-w-[120px]" title={stageMap[dp.dealstage] || dp.dealstage}>
+                    <td className="px-1.5 py-0.5 text-steel-400 text-[8px] truncate max-w-[80px]" title={stageMap[dp.dealstage] || dp.dealstage}>
                       {stageMap[dp.dealstage] || dp.dealstage || '—'}
                     </td>
-                    <td className="px-3 py-1 text-steel-300 text-[9px] max-w-[120px] truncate" title={e.companyName}>{e.companyName || '—'}</td>
-                    <td className="px-3 py-1 text-center text-emerald-400 font-bold text-[9px]">
-                      {dp.peso_total_cmr_toneladas ? `${dp.peso_total_cmr_toneladas}` : '—'}
+                    <td className="px-1.5 py-0.5 text-steel-400 text-[8px] max-w-[80px] truncate" title={e.companyName}>{e.companyName || '—'}</td>
+                    <td className="px-1.5 py-0.5 text-center text-emerald-400 font-bold text-[8px]">
+                      {dp.peso_total_cmr_toneladas || '—'}
                     </td>
-                    <td className="px-3 py-1 text-steel-400 text-[9px] whitespace-nowrap">{dp.fecha_limite_para_ofertar || '—'}</td>
-                    <td className="px-3 py-1 text-steel-300 text-[9px] truncate max-w-[70px]" title={dp.ubicacion_provincia_obra__proyecto}>{dp.ubicacion_provincia_obra__proyecto || '—'}</td>
-                    <td className="px-3 py-1 text-steel-400 text-[9px] truncate max-w-[90px]" title={dp.tipo_de_obra__proyecto}>{dp.tipo_de_obra__proyecto || '—'}</td>
-                    <td className="px-3 py-1 text-steel-400 text-[9px] truncate max-w-[90px]" title={dp.madurez_en_adjudicacion_obra__proyecto}>{dp.madurez_en_adjudicacion_obra__proyecto || '—'}</td>
-                    <td className="px-3 py-1 text-steel-500 text-[9px] truncate max-w-[90px]" title={p.tipo_de_oferta}>{p.tipo_de_oferta || '—'}</td>
-                    <td className="px-2 py-1">
+                    <td className="px-1.5 py-0.5 text-steel-500 text-[8px] whitespace-nowrap">{dp.fecha_limite_para_ofertar || '—'}</td>
+                    <td className="px-1.5 py-0.5 text-steel-400 text-[8px] truncate max-w-[40px]" title={dp.ubicacion_provincia_obra__proyecto}>{dp.ubicacion_provincia_obra__proyecto || '—'}</td>
+                    <td className="px-1.5 py-0.5 text-steel-500 text-[8px] truncate max-w-[60px]" title={dp.tipo_de_obra__proyecto}>{dp.tipo_de_obra__proyecto || '—'}</td>
+                    <td className="px-1.5 py-0.5 text-steel-500 text-[8px] truncate max-w-[60px]" title={dp.madurez_en_adjudicacion_obra__proyecto}>{dp.madurez_en_adjudicacion_obra__proyecto || '—'}</td>
+                    <td className="px-1.5 py-0.5 text-steel-500 text-[8px] truncate max-w-[60px]" title={p.tipo_de_oferta}>{p.tipo_de_oferta || '—'}</td>
+                    <td className="px-1 py-0.5">
                       <StatusEditor
                         ofertaId={oferta.id}
                         currentStatus={p.estado_de_la_oferta_presupuesto}
                         onUpdate={handleStatusUpdate}
                       />
                     </td>
-                    <td className="px-3 py-1 text-center">
+                    <td className="px-1 py-0.5 text-center">
                       {scoreResult ? (
-                        <span className={`text-[10px] font-black ${scoreResult.color}`}>{scoreResult.score}%</span>
+                        <span className={`text-[9px] font-black ${scoreResult.color}`}>{scoreResult.score}%</span>
                       ) : '—'}
                     </td>
                   </tr>
