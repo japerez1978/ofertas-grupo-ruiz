@@ -23,56 +23,6 @@ function hsDealUrl(dealId) {
   return `${HS_DOMAIN}/contacts/${HS_PORTAL}/deal/${dealId}`
 }
 
-/* ─── Multi-select Filter ─── */
-function MultiFilter({ id, icon: Icon, label, options, selected, onChange }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef(null)
-  useEffect(() => {
-    function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-  function toggle(val) {
-    onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val])
-  }
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button" id={id}
-        onClick={() => setOpen(!open)}
-      className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all border ${selected.length > 0 ? 'bg-accent-500/15 border-accent-500/60 text-accent-300' : 'bg-surface-700/50 border-white/8 text-steel-400 hover:text-white hover:border-white/15'}`}
-        style={selected.length > 0 ? { boxShadow: '0 0 14px rgba(41,182,246,0.45), 0 0 3px rgba(41,182,246,0.25)' } : {}}
-      >
-        <Icon className="w-4 h-4" />
-        {label}
-        {selected.length > 0 && (
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-accent-500 text-white text-[10px] font-bold">{selected.length}</span>
-        )}
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {selected.length > 0 && (
-        <button type="button" onClick={e => { e.stopPropagation(); onChange([]) }} className="ml-1 text-steel-500 hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
-      )}
-      {open && (
-        <div className="absolute z-50 mt-1 w-64 max-h-72 overflow-y-auto rounded-xl bg-surface-700 border border-white/10 shadow-2xl py-1">
-          {options.map(opt => {
-            const val = typeof opt === 'string' ? opt : opt.value
-            const lbl = typeof opt === 'string' ? opt : opt.label
-            const isChecked = selected.includes(val)
-            return (
-              <label key={val} className={`flex items-center gap-2.5 px-4 py-2 text-sm cursor-pointer transition-colors ${isChecked ? 'text-white bg-accent-500/10' : 'text-steel-300 hover:bg-white/5 hover:text-white'}`}>
-                <input type="checkbox" checked={isChecked} onChange={() => toggle(val)} className="w-3.5 h-3.5 rounded border-white/20 bg-surface-800 text-accent-500 focus:ring-0 cursor-pointer" />
-                {lbl}
-              </label>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
 
 /* ─── Clickable stat card ─── */
 function StatCard({ label, count, color, active, onClick }) {
@@ -158,14 +108,74 @@ function StatusEditor({ ofertaId, currentStatus, onUpdate }) {
 const TIPOS_OFERTA = ['Exploración', 'Oferta Matriz (Inicial)', 'Repetición', 'Revisión', 'Ampliación', 'Modificación']
 
 const COLUMNS = [
-  { field: 'n__de_oferta', label: 'Nº' },
-  { field: 'numero_de_oferta_heredado', label: 'Heredado' },
+  { field: 'n__de_oferta', label: 'Nº Ofert' },
+  { field: 'numero_de_oferta_heredado', label: 'Hered' },
+  { field: '_unidad', label: 'Unidad' },
   { field: '_dealName', label: 'Negocio' },
   { field: '_companyName', label: 'Empresa' },
-  { field: 'tipo_de_oferta', label: 'Tipo' },
+  { field: '_pesoRCM', label: 'Peso RCM' },
+  { field: '_fechaObj', label: 'Fecha Obj' },
+  { field: '_provincia', label: 'Prov' },
+  { field: '_estadoPartida', label: 'Est Partida' },
+  { field: '_tipoPartida', label: 'Tipo Partida' },
+  { field: 'tipo_de_oferta', label: 'Tipo Ofert' },
   { field: 'estado_de_la_oferta_presupuesto', label: 'Estado' },
-  { field: 'valor_oferta', label: 'Valor' },
 ]
+
+function MultiFilter({ id, icon: Icon, label, options, selected, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+  function toggle(val) {
+    onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val])
+  }
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button" id={id}
+        onClick={() => setOpen(!open)}
+        className={`inline-flex items-center justify-between gap-2 px-4 py-3 rounded-xl text-xs font-semibold transition-all border min-w-[170px] ${selected.length > 0 ? 'bg-accent-500/15 border-accent-500/60 text-accent-300' : 'bg-surface-700/50 border-white/8 text-steel-400 hover:text-white hover:border-white/15'}`}
+        style={selected.length > 0 ? { boxShadow: '0 0 14px rgba(41,182,246,0.45)' } : {}}
+      >
+        <div className="flex items-center gap-2">
+          <Icon className="w-4 h-4 shrink-0" />
+          <span>{label}</span>
+          {selected.length > 0 && (
+            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent-500 text-white text-[9px] font-bold">{selected.length}</span>
+          )}
+        </div>
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-64 max-h-72 overflow-y-auto rounded-xl bg-surface-700 border border-white/10 shadow-2xl py-1 left-1/2 -translate-x-1/2">
+          <div className="sticky top-0 bg-surface-700 px-3 py-2 border-b border-white/5 flex justify-between items-center">
+            <span className="text-[10px] text-steel-500 uppercase font-bold">{label}</span>
+            <button onClick={() => onChange([])} className="text-[10px] text-accent-400 hover:text-accent-300">Limpiar</button>
+          </div>
+          {options.length === 0 ? (
+            <p className="px-4 py-3 text-xs text-steel-500 italic text-center">Sin opciones disponibles</p>
+          ) : options.map(opt => {
+            const val = typeof opt === 'string' ? opt : opt.value
+            const lbl = typeof opt === 'string' ? opt : opt.label
+            const isChecked = selected.includes(val)
+            return (
+              <label key={val} className={`flex items-center gap-2.5 px-4 py-2 text-xs cursor-pointer transition-colors ${isChecked ? 'text-white bg-accent-500/10' : 'text-steel-300 hover:bg-white/5 hover:text-white'}`}>
+                <input type="checkbox" checked={isChecked} onChange={() => toggle(val)} className="w-3.5 h-3.5 rounded border-white/20 bg-surface-800 text-accent-500 focus:ring-0 cursor-pointer" />
+                <span className="line-clamp-2">{lbl}</span>
+              </label>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function OfertasPage() {
   const [ofertas, setOfertas]           = useState([])
@@ -182,6 +192,8 @@ export default function OfertasPage() {
   const [savedScores, setSavedScores]   = useState(false)
   const [syncProgress, setSyncProgress] = useState(null) // { current, total }
   const [scoreFilter, setScoreFilter]   = useState([]) // array for multi-select
+  const [estadoPartidaFilter, setEstadoPartidaFilter] = useState([])
+  const [tipoPartidaFilter, setTipoPartidaFilter] = useState([])
 
   const CACHE_KEY = 'gr_ofertas_cache'
   const CACHE_TTL = 20 * 60 * 1000  // 20 minutos
@@ -253,10 +265,14 @@ export default function OfertasPage() {
         const e = o._enriched || {}
         return [p.n__de_oferta, p.numero_de_oferta_heredado, p.presupuestador_asignado, p.tipo_de_oferta,
           p.estado_de_la_oferta_presupuesto, p.unidad_de_negocio_oferta, e.dealName, e.companyName,
-          p.empresa_vinculada_a_oferta].some(f => (f || '').toLowerCase().includes(q))
+          p.empresa_vinculada_a_oferta, e.dealProps?.madurez_en_adjudicacion_obra__proyecto,
+          e.dealProps?.tipo_de_obra__proyecto, e.dealProps?.ubicacion_provincia_obra__proyecto
+        ].some(f => (f || '').toLowerCase().includes(q))
       })
     }
     if (tipoFilter.length > 0)   list = list.filter(o => tipoFilter.includes(o.properties?.tipo_de_oferta))
+    if (estadoPartidaFilter.length > 0) list = list.filter(o => estadoPartidaFilter.includes(o._enriched?.dealProps?.madurez_en_adjudicacion_obra__proyecto))
+    if (tipoPartidaFilter.length > 0) list = list.filter(o => tipoPartidaFilter.includes(o._enriched?.dealProps?.tipo_de_obra__proyecto))
     if (activeStatCard.length > 0 && !activeStatCard.includes('Total')) list = list.filter(o => activeStatCard.includes(o.properties?.estado_de_la_oferta_presupuesto))
     // NOTE: unidadFilter is applied later in scoredFiltered so unidad cards always stay visible
     list.sort((a, b) => {
@@ -264,8 +280,15 @@ export default function OfertasPage() {
       if (sortField === '_dealName')    { aVal = a._enriched?.dealName || ''; bVal = b._enriched?.dealName || '' }
       else if (sortField === '_companyName') { aVal = a._enriched?.companyName || a.properties?.empresa_vinculada_a_oferta || ''; bVal = b._enriched?.companyName || b.properties?.empresa_vinculada_a_oferta || '' }
       else if (sortField === '_score') { aVal = 0; bVal = 0 }
+      else if (sortField === '_unidad') { aVal = a._enriched?.dealProps?.unidad_de_negocio_deal || ''; bVal = b._enriched?.dealProps?.unidad_de_negocio_deal || '' }
+      else if (sortField === '_pesoRCM') { aVal = parseFloat(a._enriched?.dealProps?.score_rcm || 0); bVal = parseFloat(b._enriched?.dealProps?.score_rcm || 0) }
+      else if (sortField === '_provincia') { aVal = a._enriched?.dealProps?.ubicacion_provincia_obra__proyecto || ''; bVal = b._enriched?.dealProps?.ubicacion_provincia_obra__proyecto || '' }
+      else if (sortField === '_estadoPartida') { aVal = a._enriched?.dealProps?.madurez_en_adjudicacion_obra__proyecto || ''; bVal = b._enriched?.dealProps?.madurez_en_adjudicacion_obra__proyecto || '' }
+      else if (sortField === '_tipoPartida') { aVal = a._enriched?.dealProps?.tipo_de_obra__proyecto || ''; bVal = b._enriched?.dealProps?.tipo_de_obra__proyecto || '' }
+      else if (sortField === '_fechaObj') { aVal = a._enriched?.dealProps?.fecha_limite_para_ofertar || ''; bVal = b._enriched?.dealProps?.fecha_limite_para_ofertar || '' }
       else { aVal = a.properties?.[sortField] || ''; bVal = b.properties?.[sortField] || '' }
-      if (sortField === 'valor_oferta' || sortField === 'n__de_oferta')
+      
+      if (sortField === 'valor_oferta' || sortField === 'n__de_oferta' || sortField === '_pesoRCM')
         return sortDir === 'asc' ? parseFloat(aVal||0) - parseFloat(bVal||0) : parseFloat(bVal||0) - parseFloat(aVal||0)
       const cmp = String(aVal).localeCompare(String(bVal), 'es', { sensitivity: 'base' })
       return sortDir === 'asc' ? cmp : -cmp
@@ -319,19 +342,35 @@ export default function OfertasPage() {
 
   // Unidad stats — use scoredOffers + scoreFilter but WITHOUT unidadFilter
   // so all unit cards always remain visible when one is selected
-  const unidadStats = useMemo(() => {
+  const { unidadStats, estadoPartidaOptions, tipoPartidaOptions } = useMemo(() => {
     const base = scoreFilter.length > 0
       ? scoredOffers.filter(o => scoreFilter.includes(o._score?.label))
       : scoredOffers
-    const map = {}
+    
+    const uMap = {}
+    const epSet = new Set()
+    const tpSet = new Set()
+
     base.forEach(o => {
       const u = o.properties?.unidad_de_negocio_oferta
-      if (!u) return
-      if (!map[u]) map[u] = { count: 0, value: 0 }
-      map[u].count++
-      map[u].value += parseFloat(o.properties?.valor_oferta || 0)
+      if (u) {
+        if (!uMap[u]) uMap[u] = { count: 0, value: 0 }
+        uMap[u].count++
+        uMap[u].value += parseFloat(o.properties?.valor_oferta || 0)
+      }
+      
+      const ep = o._enriched?.dealProps?.madurez_en_adjudicacion_obra__proyecto
+      if (ep) epSet.add(ep)
+      
+      const tp = o._enriched?.dealProps?.tipo_de_obra__proyecto
+      if (tp) tpSet.add(tp)
     })
-    return Object.entries(map).sort((a, b) => b[1].value - a[1].value)
+
+    return {
+      unidadStats: Object.entries(uMap).sort((a, b) => b[1].value - a[1].value),
+      estadoPartidaOptions: [...epSet].sort(),
+      tipoPartidaOptions: [...tpSet].sort()
+    }
   }, [scoredOffers, scoreFilter])
 
   // ── Handlers ──
@@ -351,6 +390,8 @@ export default function OfertasPage() {
     setTipoFilter([])
     setActiveStatCard([]); setUnidadFilter([]); setSearch('')
     setScoreFilter([])
+    setEstadoPartidaFilter([])
+    setTipoPartidaFilter([])
   }
   function handleStatusUpdate(ofertaId, newStatus) {
     setOfertas(prev => {
@@ -494,16 +535,49 @@ export default function OfertasPage() {
         </div>
       )}
 
-      {/* Search bar — FIRST */}
-      <div className="relative max-w-lg">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-steel-400 pointer-events-none" />
-        <input
-          id="search-offers" type="text"
-          placeholder="Buscar por nº, negocio, empresa, presupuestador..."
-          value={search} onChange={e => setSearch(e.target.value)}
-          className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-surface-700/50 border border-white/8 text-white text-sm placeholder-steel-500 focus:outline-none focus:border-accent-500/50 focus:ring-1 focus:ring-accent-500/25 transition-all"
-        />
-        {search && <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-steel-500 hover:text-white"><X className="w-4 h-4" /></button>}
+      {/* Search and Filters Area — Centered */}
+      <div className="flex flex-col items-center gap-6 py-4">
+        <div className="relative w-full max-w-2xl group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-steel-500 group-focus-within:text-accent-400 transition-colors pointer-events-none" />
+          <input
+            id="search-offers" type="text"
+            placeholder="Buscar por nº, negocio, empresa, presupuestador, provincia..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full pl-12 pr-12 py-4 rounded-2xl bg-surface-700/40 border border-white/10 text-white text-base placeholder-steel-500 focus:outline-none focus:border-accent-500/50 focus:ring-4 focus:ring-accent-500/10 transition-all shadow-xl"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-steel-500 hover:text-white p-1">
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-3">
+          <MultiFilter
+            id="filter-estado-partida"
+            icon={Zap}
+            label="Estado Partida"
+            options={estadoPartidaOptions}
+            selected={estadoPartidaFilter}
+            onChange={setEstadoPartidaFilter}
+          />
+          <MultiFilter
+            id="filter-tipo-partida"
+            icon={Briefcase}
+            label="Tipo Partida"
+            options={tipoPartidaOptions}
+            selected={tipoPartidaFilter}
+            onChange={setTipoPartidaFilter}
+          />
+          <MultiFilter
+            id="filter-tipo-oferta"
+            icon={Layers}
+            label="Tipo Oferta"
+            options={TIPOS_OFERTA}
+            selected={tipoFilter}
+            onChange={setTipoFilter}
+          />
+        </div>
       </div>
 
       {/* Estado de Oferta — glass-card with all 13 statuses + Total */}
@@ -719,70 +793,58 @@ export default function OfertasPage() {
             </thead>
             <tbody className="divide-y divide-white/4">
               {scoredFiltered.length === 0 ? (
-                <tr><td colSpan={COLUMNS.length + 2} className="px-5 py-16 text-center text-steel-500">
+                <tr><td colSpan={COLUMNS.length} className="px-5 py-16 text-center text-steel-500">
                   {hasFilters ? 'No hay ofertas con esos filtros.' : 'No hay ofertas. ¡Crea la primera!'}
                 </td></tr>
               ) : scoredFiltered.map((oferta, i) => {
                 const p = oferta.properties || {}
                 const e = oferta._enriched || {}
-                const statusBadge = getOfferStatusBadge(p.estado_de_la_oferta_presupuesto)
-                const dealAssoc = oferta.associations?.deals?.results || []
-                const dealId = dealAssoc[0]?.id
+                const dp = e.dealProps || {}
+                const dealId = e.dealId
                 const scoreResult = oferta._score
 
                 return (
-                  <tr key={oferta.id} className="hover:bg-white/3 transition-colors group" style={{ animationDelay: `${i * 15}ms` }}>
+                  <tr key={oferta.id} className="hover:bg-white/3 transition-colors group" style={{ animationDelay: `${i * 10}ms` }}>
                     <td className="px-4 py-3.5">
                       <a
                         href={hsOfertaUrl(oferta.id)}
                         target="_blank" rel="noopener noreferrer"
-                        title="Ver oferta en HubSpot"
-                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-navy-900/50 border border-accent-500/20 text-accent-400 text-xs font-bold tabular-nums hover:bg-accent-500/15 hover:border-accent-500/50 hover:shadow-[0_0_10px_rgba(41,182,246,0.35)] transition-all"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-navy-900/50 border border-accent-500/20 text-accent-400 text-[10px] font-bold hover:bg-accent-500/15 transition-all"
                       >
                         {p.n__de_oferta || '—'}
                       </a>
                     </td>
-                    <td className="px-4 py-3.5 font-medium text-steel-300 text-xs tabular-nums">{p.numero_de_oferta_heredado || '—'}</td>
-                    <td className="px-4 py-3 font-medium text-white max-w-[220px]">
+                    <td className="px-4 py-3.5 text-steel-400 text-[10px] tabular-nums">{p.numero_de_oferta_heredado || '—'}</td>
+                    <td className="px-4 py-3.5 text-steel-300 text-xs font-medium truncate max-w-[100px]" title={dp.unidad_de_negocio_deal}>{dp.unidad_de_negocio_deal || '—'}</td>
+                    <td className="px-4 py-3.5 font-medium text-white max-w-[180px]">
                       {e.dealName ? (
                         dealId ? (
-                          <a href={hsDealUrl(dealId)} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-start gap-1.5 hover:text-accent-300 transition-colors group/link">
-                            <span className="line-clamp-3 leading-snug" title={e.dealName}>{e.dealName}</span>
-                            <ExternalLink className="w-3 h-3 shrink-0 mt-0.5 opacity-0 group-hover/link:opacity-100 text-accent-400 transition-opacity" />
+                          <a href={hsDealUrl(dealId)} target="_blank" rel="noopener noreferrer" className="hover:text-accent-300 transition-colors line-clamp-2 leading-tight text-xs">
+                            {e.dealName}
                           </a>
-                        ) : <span className="line-clamp-3 leading-snug" title={e.dealName}>{e.dealName}</span>
+                        ) : <span className="line-clamp-2 leading-tight text-xs">{e.dealName}</span>
                       ) : '—'}
                     </td>
-                    <td className="px-4 py-3.5 text-steel-300 text-xs max-w-[160px] truncate" title={e.companyName || p.empresa_vinculada_a_oferta}>
-                      {e.companyName || p.empresa_vinculada_a_oferta || '—'}
+                    <td className="px-4 py-3.5 text-steel-300 text-xs max-w-[140px] truncate" title={e.companyName}>{e.companyName || '—'}</td>
+                    <td className="px-4 py-3.5 text-center">
+                      <div className="flex flex-col items-center">
+                        <span className="text-emerald-400 font-bold text-xs">{dp.score_rcm || '—'}</span>
+                        {scoreResult && (
+                          <span className={`text-[9px] font-bold ${scoreResult.color}`}>{scoreResult.score}%</span>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-4 py-3.5 text-steel-400 text-xs">{p.tipo_de_oferta || '—'}</td>
+                    <td className="px-4 py-3.5 text-steel-400 text-[10px] whitespace-nowrap">{dp.fecha_limite_para_ofertar || '—'}</td>
+                    <td className="px-4 py-3.5 text-steel-300 text-[10px] truncate max-w-[80px]" title={dp.ubicacion_provincia_obra__proyecto}>{dp.ubicacion_provincia_obra__proyecto || '—'}</td>
+                    <td className="px-4 py-3.5 text-steel-400 text-[10px] truncate max-w-[100px]" title={dp.madurez_en_adjudicacion_obra__proyecto}>{dp.madurez_en_adjudicacion_obra__proyecto || '—'}</td>
+                    <td className="px-4 py-3.5 text-steel-400 text-[10px] truncate max-w-[100px]" title={dp.tipo_de_obra__proyecto}>{dp.tipo_de_obra__proyecto || '—'}</td>
+                    <td className="px-4 py-3.5 text-steel-500 text-[10px] truncate max-w-[100px]" title={p.tipo_de_oferta}>{p.tipo_de_oferta || '—'}</td>
                     <td className="px-4 py-3.5">
                       <StatusEditor
                         ofertaId={oferta.id}
                         currentStatus={p.estado_de_la_oferta_presupuesto}
                         onUpdate={handleStatusUpdate}
                       />
-                    </td>
-                    <td className="px-4 py-3.5 font-semibold text-emerald-400 tabular-nums text-sm">{formatCurrency(p.valor_oferta)}</td>
-                    {/* Score column */}
-                    <td className="px-4 py-3.5 text-center">
-                      {scoreResult ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <span className={`text-lg font-bold tabular-nums leading-none ${scoreResult.color}`}>
-                            {scoreResult.score}
-                          </span>
-                          <div className="w-12 h-1 rounded-full bg-white/10 overflow-hidden">
-                            <div className={`h-full rounded-full ${scoreResult.bg}`} style={{ width: `${scoreResult.score}%` }} />
-                          </div>
-                          <span className={`text-[9px] font-semibold uppercase tracking-wide ${scoreResult.color}`}>
-                            {scoreResult.dot} {scoreResult.label}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-steel-600 text-xs">—</span>
-                      )}
                     </td>
                   </tr>
                 )
