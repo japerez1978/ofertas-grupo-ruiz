@@ -117,18 +117,22 @@ export default function OfertasPage() {
   const [scoreFilter, setScoreFilter]   = useState([]) // array for multi-select
 
   const CACHE_KEY = 'gr_ofertas_cache'
-  const CACHE_TTL = 5 * 60 * 1000
+  const CACHE_TTL = 20 * 60 * 1000  // 20 minutos
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadProgress, setLoadProgress] = useState({ loaded: 0, phase: 'loading' })
 
   useEffect(() => {
     loadMatrices().then(setMatrices).catch(() => {})
+    let hasCachedData = false
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
       if (cached.data && cached.ts && Date.now() - cached.ts < CACHE_TTL) {
         setOfertas(cached.data)
         setLoading(false)
+        hasCachedData = true
       }
     } catch { /* ignore */ }
-    fetchOfertas()
+    fetchOfertas(!hasCachedData)  // solo spinner completo si no hay caché
     const interval = setInterval(() => fetchOfertas(false), CACHE_TTL)
     return () => clearInterval(interval)
   }, [])
@@ -136,13 +140,26 @@ export default function OfertasPage() {
   async function fetchOfertas(showSpinner = true) {
     if (showSpinner) setLoading(true)
     setError(null)
+    setLoadingMore(true)
+    setLoadProgress({ loaded: 0, phase: 'loading' })
     try {
-      const data = await getAllOfertas()
-      const results = Array.isArray(data.results) ? data.results : []
-      setOfertas(results)
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ data: results, ts: Date.now() }))
-    } catch (err) { setError(err.message) }
-    finally { if (showSpinner) setLoading(false) }
+      await getAllOfertas({
+        onProgress: ({ partial, loaded, phase }) => {
+          setOfertas(partial)
+          setLoading(false)  // En cuanto llegan datos, oculta spinner completo
+          setLoadProgress({ loaded, phase })
+          if (phase === 'done') {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ data: partial, ts: Date.now() }))
+            setLoadingMore(false)
+          }
+        }
+      })
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
   }
 
   // ── All useMemo BEFORE any conditional return ──
@@ -290,9 +307,23 @@ export default function OfertasPage() {
 
   // ── Render ──
   if (loading) return (
-    <div className="flex flex-col items-center justify-center h-96 gap-3">
+    <div className="flex flex-col items-center justify-center h-96 gap-4">
       <Spinner size="lg" />
-      <p className="text-steel-400 text-sm animate-pulse">Cargando ofertas de HubSpot...</p>
+      <div className="flex flex-col items-center gap-1.5">
+        <p className="text-steel-300 text-sm font-medium animate-pulse">
+          {loadProgress.loaded > 0
+            ? `${loadProgress.loaded} ofertas encontradas...`
+            : 'Conectando con HubSpot...'}
+        </p>
+        {loadProgress.loaded > 0 && (
+          <div className="w-48 h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-accent-500 to-accent-400 transition-all duration-500"
+              style={{ width: `${Math.min((loadProgress.loaded / 500) * 80, 80)}%` }}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 
@@ -333,6 +364,36 @@ export default function OfertasPage() {
           </Link>
         </div>
       </div>
+
+      {/* Barra de progreso de carga progresiva */}
+      {loadingMore && !loading && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-accent-500/8 border border-accent-500/20">
+          <div className="flex gap-1 items-center shrink-0">
+            {[0, 1, 2].map(i => (
+              <span
+                key={i}
+                className="w-1.5 h-1.5 rounded-full bg-accent-400 animate-bounce"
+                style={{ animationDelay: `${i * 130}ms` }}
+              />
+            ))}
+          </div>
+          <span className="text-accent-300 text-xs font-medium">
+            {loadProgress.phase === 'enriching'
+              ? `Enriqueciendo datos de ${loadProgress.loaded} ofertas...`
+              : `Cargando ofertas... ${loadProgress.loaded} encontradas`}
+          </span>
+          <div className="ml-auto h-1 w-32 rounded-full bg-white/10 overflow-hidden shrink-0">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-accent-500 to-accent-400 transition-all duration-700"
+              style={{
+                width: loadProgress.phase === 'enriching'
+                  ? '88%'
+                  : `${Math.min((loadProgress.loaded / 500) * 70, 70)}%`
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Search bar — FIRST */}
       <div className="relative max-w-lg">

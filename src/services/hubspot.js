@@ -30,18 +30,27 @@ const OFERTA_PROPERTIES = [
   'unidad_de_negocio_oferta', 'presupuestador_asignado', 'createdate'
 ].join(',');
 
-/** Listar TODAS las ofertas con paginación correcta + batch-reads paralelos */
-export async function getAllOfertas() {
-  let allResults = [];
-  let after = null;
+/**
+ * Listar TODAS las ofertas con carga progresiva + batch-reads paralelos.
+ * onProgress({ partial, loaded, phase: 'loading'|'enriching'|'done' })
+ * se llama tras cada página y tras el enriquecimiento, permitiendo mostrar
+ * datos parciales inmediatamente en la UI.
+ */
+export async function getAllOfertas({ onProgress } = {}) {
+  let allResults = []
+  let after = null
 
   // 1. Paginate sequentially (HubSpot uses cursor tokens, not offsets)
+  //    Reportamos datos parciales (sin enriquecer) tras cada página
   for (let page = 0; page < 25; page++) {
     const afterParam = after ? `&after=${after}` : '';
     const data = await request(
       `/proxy/crm/v3/objects/2-198173351?limit=100&properties=${OFERTA_PROPERTIES}&associations=deals,companies${afterParam}`
     );
     allResults = [...allResults, ...(data.results || [])];
+
+    // Emitir resultados parciales (sin enriquecer) → la UI los muestra ya
+    onProgress?.({ partial: [...allResults], loaded: allResults.length, phase: 'loading' });
 
     // Cursor token from HubSpot (NOT a number - must use exactly as returned)
     if (data.paging?.next?.after) {
@@ -58,6 +67,9 @@ export async function getAllOfertas() {
     (o.associations?.deals?.results || []).forEach(a => dealIds.add(String(a.id)));
     (o.associations?.companies?.results || []).forEach(a => companyIds.add(String(a.id)));
   });
+
+  // Señal: fase de enriquecimiento iniciada
+  onProgress?.({ partial: [...allResults], loaded: allResults.length, phase: 'enriching' });
 
   // 3. Batch-read deals (with scoring props) + companies IN PARALLEL
   const DEAL_SCORING_PROPS = [
@@ -79,7 +91,7 @@ export async function getAllOfertas() {
     batchReadMap('companies', [...companyIds], 'name'),
   ]);
 
-  // 4. Enrich
+  // 4. Enrich in place
   allResults.forEach(o => {
     const firstDealId = (o.associations?.deals?.results || [])[0]?.id;
     const firstCompId = (o.associations?.companies?.results || [])[0]?.id;
@@ -93,6 +105,9 @@ export async function getAllOfertas() {
         : (o.properties?.empresa_vinculada_a_oferta || ''),
     };
   });
+
+  // 5. Emitir datos completamente enriquecidos
+  onProgress?.({ partial: allResults, loaded: allResults.length, phase: 'done' });
 
   return { results: allResults };
 }
