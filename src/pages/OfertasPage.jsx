@@ -198,9 +198,12 @@ export default function OfertasPage() {
         hasCachedData = true
       }
     } catch { /* ignore */ }
-    fetchOfertas(!hasCachedData)  // solo spinner completo si no hay caché
-    const interval = setInterval(() => fetchOfertas(false), CACHE_TTL)
-    return () => clearInterval(interval)
+    
+    // SOLO cargar si NO tenemos caché válido
+    if (!hasCachedData) {
+      fetchOfertas(true)
+    }
+    // Eliminamos el interval automático para evitar recargas constantes al cambiar de pestaña
   }, [])
 
   async function fetchOfertas(showSpinner = true) {
@@ -349,11 +352,21 @@ export default function OfertasPage() {
     setScoreFilter([])
   }
   function handleStatusUpdate(ofertaId, newStatus) {
-    setOfertas(prev => prev.map(o =>
-      o.id === ofertaId
-        ? { ...o, properties: { ...o.properties, estado_de_la_oferta_presupuesto: newStatus } }
-        : o
-    ))
+    setOfertas(prev => {
+      const updated = prev.map(o =>
+        o.id === ofertaId
+          ? { ...o, properties: { ...o.properties, estado_de_la_oferta_presupuesto: newStatus } }
+          : o
+      )
+      // Actualizar el caché de localStorage para que persista tras recargar
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
+        if (cached.data) {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cached, data: updated }))
+        }
+      } catch (e) { console.warn('Error al actualizar cache local:', e) }
+      return updated
+    })
   }
 
   async function handleSaveScores() {

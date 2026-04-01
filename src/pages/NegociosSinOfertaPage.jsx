@@ -116,7 +116,11 @@ export default function NegociosSinOfertaPage() {
         hasCachedData = true
       }
     } catch { /* ignore */ }
-    fetchDeals(!hasCachedData)
+    
+    // Solo cargamos automáticamente si NO hay caché fresco
+    if (!hasCachedData) {
+      fetchDeals(true)
+    }
   }, [])
 
   async function fetchDeals(showSpinner = true) {
