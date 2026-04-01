@@ -187,21 +187,28 @@ export default function CrearOfertaPage() {
   const [toast, setToast] = useState(null)
   const [loadingNumber, setLoadingNumber] = useState(true)
 
-  // Sync "Numero de oferta disponible" to HSA Deal
+  // Sync "Numero de oferta libre" to HSA Deal
   const syncOfferNumberToDeal = useCallback(async (dealId, num) => {
     if (!dealId || num === undefined || num === null) return
     const numericValue = Number(num)
     if (isNaN(numericValue)) return
     
     try {
-      // Sincronizamos a las 3 propiedades que Juan tiene relacionadas en el Deal
-      // para asegurar que lo vea en HubSpot use la que use.
+      // Sincronizamos a la nueva propiedad que Juan ha creado ("numero de oferta libre")
+      // y mantenemos las anteriores por seguridad.
       await patchDeal(dealId, { 
+        numero_de_oferta_libre: numericValue,
         numero_de_oferta_disponible: numericValue,
-        numero_de_oferta_activa: numericValue,
-        n_de_oferta_inicial_deal: numericValue
+        numero_de_oferta_activa: numericValue
       })
-      console.log(`[Sync] nº ${numericValue} sincronizado con Deal ${dealId} (3 props)`)
+      console.log(`[Sync] nº ${numericValue} sincronizado con Deal ${dealId}`)
+      
+      // Mostrar feedback visual al usuario
+      setToast({ 
+        message: `✅ Sincronizado en HubSpot Nº ${numericValue}`, 
+        type: 'success' 
+      })
+      setTimeout(() => setToast(null), 3500)
     } catch (err) { 
       console.error('Error syncing number to deal:', err) 
     }
