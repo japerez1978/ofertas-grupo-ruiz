@@ -166,19 +166,29 @@ export async function patchDeal(id, properties) {
   });
 }
 
-/** Escribe scores en lote para múltiples deals usando v3 batch API */
-export async function writeDealScoresBatch(scorePairs) {
+/** Escribe scores en lote para múltiples deals usando v3 batch API con chunking (máx 100 por petición) */
+export async function writeDealScoresBatch(scorePairs, onProgress) {
   // scorePairs: [{ dealId, score }, ...]
   if (!scorePairs.length) return;
-  return request('/proxy/crm/v3/objects/deals/batch/update', {
-    method: 'POST',
-    body: JSON.stringify({
-      inputs: scorePairs.map(({ dealId, score }) => ({
-        id: dealId,
-        properties: { score_rcm: String(score) }
-      }))
-    })
-  });
+  
+  const CHUNK_SIZE = 100;
+  const chunks = chunkArray(scorePairs, CHUNK_SIZE);
+  const total = scorePairs.length;
+  let processed = 0;
+
+  for (const chunk of chunks) {
+    await request('/proxy/crm/v3/objects/deals/batch/update', {
+      method: 'POST',
+      body: JSON.stringify({
+        inputs: chunk.map(({ dealId, score }) => ({
+          id: dealId,
+          properties: { score_rcm: String(score) }
+        }))
+      })
+    });
+    processed += chunk.length;
+    onProgress?.(processed, total);
+  }
 }
 
 // ─── Propiedades a cargar para negocios sin oferta ───────────────────────────

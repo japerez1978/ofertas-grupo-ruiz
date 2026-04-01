@@ -180,6 +180,7 @@ export default function OfertasPage() {
   const [matrices, setMatrices]         = useState([])
   const [savingScores, setSavingScores] = useState(false)
   const [savedScores, setSavedScores]   = useState(false)
+  const [syncProgress, setSyncProgress] = useState(null) // { current, total }
   const [scoreFilter, setScoreFilter]   = useState([]) // array for multi-select
 
   const CACHE_KEY = 'gr_ofertas_cache'
@@ -374,13 +375,24 @@ export default function OfertasPage() {
       .filter(o => o._score && o._enriched?.dealId)
       .map(o => ({ dealId: o._enriched.dealId, score: o._score.score }))
     if (!pairs.length) return
+    
     setSavingScores(true)
+    setSyncProgress({ current: 0, total: pairs.length })
     try {
-      await writeDealScoresBatch(pairs)
+      await writeDealScoresBatch(pairs, (current, total) => {
+        setSyncProgress({ current, total })
+      })
       setSavedScores(true)
-      setTimeout(() => setSavedScores(false), 3000)
-    } catch (e) { console.error('Error saving scores:', e) }
-    finally { setSavingScores(false) }
+      setTimeout(() => {
+        setSavedScores(false)
+        setSyncProgress(null)
+      }, 3500)
+    } catch (e) { 
+      console.error('Error saving scores:', e)
+      alert(`Error al sincronizar: ${e.message}`)
+    } finally { 
+      setSavingScores(false) 
+    }
   }
 
   // ── Derived values (non-hook, safe after all useMemos) ──
