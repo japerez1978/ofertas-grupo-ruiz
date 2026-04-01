@@ -189,10 +189,21 @@ export default function CrearOfertaPage() {
 
   // Sync "Numero de oferta disponible" to HSA Deal
   const syncOfferNumberToDeal = useCallback(async (dealId, num) => {
-    if (!dealId || !num) return
+    if (!dealId || num === undefined || num === null) return
+    const numericValue = Number(num)
+    if (isNaN(numericValue)) return
+    
     try {
-      await patchDeal(dealId, { numero_de_oferta_disponible: String(num) })
-    } catch (err) { console.error('Error syncing number to deal:', err) }
+      // Sincronizamos a la propiedad solicitada (tipo número)
+      await patchDeal(dealId, { 
+        numero_de_oferta_disponible: numericValue,
+        // Opcional: También sincronizamos a "Numero de oferta activa" si existe
+        // numero_de_oferta_activa: numericValue
+      })
+      console.log(`[Sync] nº ${numericValue} sincronizado con Deal ${dealId}`)
+    } catch (err) { 
+      console.error('Error syncing number to deal:', err) 
+    }
   }, [])
 
   // When a deal is selected, fetch its versions to update the offer number
