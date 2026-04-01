@@ -11,6 +11,7 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<OfertasPage />} />
+        <Route path="/ofertas" element={<OfertasPage />} />
         <Route path="/crear" element={<CrearOfertaPage />} />
         <Route path="/oferta/:id" element={<DetalleOfertaPage />} />
         <Route path="/scoring" element={<ScoringPage />} />

@@ -5,7 +5,7 @@ import {
   ChevronDown, X, Briefcase, Layers, RefreshCw,
   ExternalLink, Zap, CloudUpload, Filter, Check
 } from 'lucide-react'
-import { getAllOfertas, writeDealScoresBatch, patchOferta } from '../services/hubspot'
+import { getAllOfertas, writeDealScoresBatch, patchOferta, getDealStagesMap } from '../services/hubspot'
 import { getOfferStatusBadge, formatCurrency, OFFER_STATUSES } from '../utils/helpers'
 import { loadMatrices } from '../services/supabase'
 import { getMatrixForUnidad } from '../data/matrices'
@@ -112,14 +112,16 @@ const COLUMNS = [
   { field: 'numero_de_oferta_heredado', label: 'Hered' },
   { field: '_unidad', label: 'Unidad' },
   { field: '_dealName', label: 'Negocio' },
+  { field: '_stage', label: 'Etapa' },
   { field: '_companyName', label: 'Empresa' },
-  { field: '_pesoRCM', label: 'Peso RCM' },
+  { field: 'peso_total_cmr_toneladas', label: 'Peso Tn' },
   { field: '_fechaObj', label: 'Fecha Obj' },
   { field: '_provincia', label: 'Prov' },
-  { field: '_estadoPartida', label: 'Est Partida' },
   { field: '_tipoPartida', label: 'Tipo Partida' },
+  { field: '_estadoPartida', label: 'Est Partida' },
   { field: 'tipo_de_oferta', label: 'Tipo Ofert' },
   { field: 'estado_de_la_oferta_presupuesto', label: 'Estado' },
+  { field: '_score', label: 'Score' },
 ]
 
 function MultiFilter({ id, icon: Icon, label, options, selected, onChange }) {
@@ -220,6 +222,8 @@ export default function OfertasPage() {
   const [scoreFilter, setScoreFilter]   = useState([]) // array for multi-select
   const [estadoPartidaFilter, setEstadoPartidaFilter] = useState([])
   const [tipoPartidaFilter, setTipoPartidaFilter] = useState([])
+  const [stageFilter, setStageFilter] = useState([])
+  const [stageMap, setStageMap] = useState({})
 
   const CACHE_KEY = 'gr_ofertas_cache'
   const CACHE_TTL = 20 * 60 * 1000  // 20 minutos
@@ -228,21 +232,21 @@ export default function OfertasPage() {
 
   useEffect(() => {
     loadMatrices().then(setMatrices).catch(() => {})
-    let hasCachedData = false
+    getDealStagesMap().then(setStageMap).catch(() => {})
+    
+    // RESTAURAR LÓGICA DE CACHE: Solo cargar de HubSpot si no tenemos datos frescos
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
+      const CACHE_TTL = 30 * 60 * 1000 // 30 minutos de paz sin recargas
       if (cached.data && cached.ts && Date.now() - cached.ts < CACHE_TTL) {
         setOfertas(cached.data)
         setLoading(false)
-        hasCachedData = true
+        console.log('[CACHE] Cargando ofertas desde memoria local')
+        return
       }
     } catch { /* ignore */ }
-    
-    // SOLO cargar si NO tenemos caché válido
-    if (!hasCachedData) {
-      fetchOfertas(true)
-    }
-    // Eliminamos el interval automático para evitar recargas constantes al cambiar de pestaña
+
+    fetchOfertas(true)
   }, [])
 
   async function fetchOfertas(showSpinner = true) {
@@ -253,6 +257,10 @@ export default function OfertasPage() {
     try {
       await getAllOfertas({
         onProgress: ({ partial, loaded, phase }) => {
+          if (loaded > 0 && !window.__debug_done) {
+            console.log('[RAW DATA DEBUG] First Offer enriched props:', partial[0]?._enriched?.dealProps)
+            window.__debug_done = true
+          }
           setOfertas(partial)
           setLoading(false)  // En cuanto llegan datos, oculta spinner completo
           setLoadProgress({ loaded, phase })
@@ -297,13 +305,31 @@ export default function OfertasPage() {
       })
     }
     if (tipoFilter.length > 0)   list = list.filter(o => tipoFilter.includes(o.properties?.tipo_de_oferta))
-    if (estadoPartidaFilter.length > 0) list = list.filter(o => estadoPartidaFilter.includes(o._enriched?.dealProps?.madurez_en_adjudicacion_obra__proyecto))
-    if (tipoPartidaFilter.length > 0) list = list.filter(o => tipoPartidaFilter.includes(o._enriched?.dealProps?.tipo_de_obra__proyecto))
+    if (estadoPartidaFilter.length > 0) {
+      list = list.filter(o => {
+        const val = o._enriched?.dealProps?.madurez_en_adjudicacion_obra__proyecto
+        const isMatch = val && estadoPartidaFilter.some(selected => String(selected).trim().toLowerCase() === String(val).trim().toLowerCase())
+        if (!isMatch && val) console.log(`[Filter Debug] No match: ${val} vs`, estadoPartidaFilter)
+        return isMatch
+      })
+    }
+    if (tipoPartidaFilter.length > 0) {
+      list = list.filter(o => {
+        const val = o._enriched?.dealProps?.tipo_de_obra__proyecto
+        const isMatch = val && tipoPartidaFilter.some(selected => String(selected).trim().toLowerCase() === String(val).trim().toLowerCase())
+        if (!isMatch && val) console.log(`[Filter Debug] No match: ${val} vs`, tipoPartidaFilter)
+        return isMatch
+      })
+    }
     if (activeStatCard.length > 0 && !activeStatCard.includes('Total')) list = list.filter(o => activeStatCard.includes(o.properties?.estado_de_la_oferta_presupuesto))
+    if (stageFilter.length > 0) {
+      list = list.filter(o => stageFilter.includes(o._enriched?.dealProps?.dealstage))
+    }
     // NOTE: unidadFilter is applied later in scoredFiltered so unidad cards always stay visible
     list.sort((a, b) => {
       let aVal, bVal
       if (sortField === '_dealName')    { aVal = a._enriched?.dealName || ''; bVal = b._enriched?.dealName || '' }
+      else if (sortField === '_stage') { aVal = a._enriched?.dealProps?.dealstage || ''; bVal = b._enriched?.dealProps?.dealstage || '' }
       else if (sortField === '_companyName') { aVal = a._enriched?.companyName || a.properties?.empresa_vinculada_a_oferta || ''; bVal = b._enriched?.companyName || b.properties?.empresa_vinculada_a_oferta || '' }
       else if (sortField === '_score') { aVal = 0; bVal = 0 }
       else if (sortField === '_unidad') { aVal = a._enriched?.dealProps?.unidad_de_negocio_deal || ''; bVal = b._enriched?.dealProps?.unidad_de_negocio_deal || '' }
@@ -320,7 +346,7 @@ export default function OfertasPage() {
       return sortDir === 'asc' ? cmp : -cmp
     })
     return list
-  }, [ofertas, search, tipoFilter, activeStatCard, sortField, sortDir])
+  }, [ofertas, search, tipoFilter, activeStatCard, sortField, sortDir, estadoPartidaFilter, tipoPartidaFilter, stageFilter])
 
 
   // Score computation + final score-level filter
@@ -357,27 +383,31 @@ export default function OfertasPage() {
     return list
   }, [scoredOffers, scoreFilter, unidadFilter, sortField, sortDir])
 
-  // Score level counts for filter buttons
-  const scoreCounts = useMemo(() => {
-    const counts = { Alto: 0, Medio: 0, Bajo: 0 }
+  const scoreStats = useMemo(() => {
+    const stats = { 
+      Alto:  { count: 0, value: 0 }, 
+      Medio: { count: 0, value: 0 }, 
+      Bajo:  { count: 0, value: 0 } 
+    }
     scoredOffers.forEach(o => {
-      if (o._score?.label) counts[o._score.label] = (counts[o._score.label] || 0) + 1
+      const label = o._score?.label
+      if (label && stats[label]) {
+        stats[label].count++
+        stats[label].value += parseFloat(o.properties?.valor_oferta || 0)
+      }
     })
-    return counts
+    return stats
   }, [scoredOffers])
 
-  // Unidad stats — use scoredOffers + scoreFilter but WITHOUT unidadFilter
-  // so all unit cards always remain visible when one is selected
-  const { unidadStats, estadoPartidaOptions, tipoPartidaOptions } = useMemo(() => {
-    const base = scoreFilter.length > 0
-      ? scoredOffers.filter(o => scoreFilter.includes(o._score?.label))
-      : scoredOffers
-    
+  const { unidadStats, estadoPartidaOptions, tipoPartidaOptions, stageOptions } = useMemo(() => {
+    // We use the raw dataset (ofertas) for the filter options 
+    // so they NEVER vanish when an option is selected.
     const uMap = {}
     const epSet = new Set()
     const tpSet = new Set()
+    const sSet = new Set()
 
-    base.forEach(o => {
+    ofertas.forEach(o => {
       const u = o.properties?.unidad_de_negocio_oferta
       if (u) {
         if (!uMap[u]) uMap[u] = { count: 0, value: 0 }
@@ -390,14 +420,23 @@ export default function OfertasPage() {
       
       const tp = o._enriched?.dealProps?.tipo_de_obra__proyecto
       if (tp) tpSet.add(tp)
+
+      const s = o._enriched?.dealProps?.dealstage
+      if (s) sSet.add(s)
     })
+
+    const sortedStages = [...sSet].map(id => ({
+      value: id,
+      label: stageMap[id] || id
+    })).sort((a,b) => a.label.localeCompare(b.label))
 
     return {
       unidadStats: Object.entries(uMap).sort((a, b) => b[1].value - a[1].value),
       estadoPartidaOptions: [...epSet].sort(),
-      tipoPartidaOptions: [...tpSet].sort()
+      tipoPartidaOptions: [...tpSet].sort(),
+      stageOptions: sortedStages
     }
-  }, [scoredOffers, scoreFilter])
+  }, [ofertas, stageMap])
 
   // ── Handlers ──
 
@@ -580,12 +619,12 @@ export default function OfertasPage() {
 
         <div className="flex flex-wrap justify-center items-center gap-4">
           <MultiFilter
-            id="filter-estado-partida"
-            icon={Zap}
-            label="Estado Partida"
-            options={estadoPartidaOptions}
-            selected={estadoPartidaFilter}
-            onChange={setEstadoPartidaFilter}
+            id="filter-stage"
+            icon={FileText}
+            label="Etapa"
+            options={stageOptions}
+            selected={stageFilter}
+            onChange={setStageFilter}
           />
           <MultiFilter
             id="filter-tipo-partida"
@@ -594,6 +633,14 @@ export default function OfertasPage() {
             options={tipoPartidaOptions}
             selected={tipoPartidaFilter}
             onChange={setTipoPartidaFilter}
+          />
+          <MultiFilter
+            id="filter-estado-partida"
+            icon={Zap}
+            label="Estado Partida"
+            options={estadoPartidaOptions}
+            selected={estadoPartidaFilter}
+            onChange={setEstadoPartidaFilter}
           />
           <MultiFilter
             id="filter-tipo-oferta"
@@ -614,47 +661,17 @@ export default function OfertasPage() {
           {(search || tipoFilter.length || estadoPartidaFilter.length || tipoPartidaFilter.length || activeStatCard.length || unidadFilter.length || scoreFilter.length) ? (
             <button 
               onClick={clearAll} 
-              className="px-4 py-2 text-[10px] font-black text-red-400 hover:text-red-300 transition-colors flex items-center gap-2 bg-red-500/5 hover:bg-red-500/10 rounded-xl border border-red-500/20"
+              className="px-3 py-1.5 text-[9px] font-black text-red-400 hover:text-red-300 transition-colors flex items-center gap-1.5 bg-red-500/5 hover:bg-red-500/10 rounded-lg border border-red-500/20"
             >
-              <X className="w-3.5 h-3.5" /> LIMPIAR TODO
+              <X className="w-3 h-3" /> LIMPIAR TODO
             </button>
           ) : null}
         </div>
       </div>
 
+      {/* Secciones de desglose compactadas o eliminadas para ahorrar espacio vertical */}
 
-      {/* Tipo de Oferta filter cards */}
-      <div className="glass-card rounded-2xl p-5">
-        <h3 className="text-xs font-semibold text-accent-400 uppercase tracking-wider flex items-center gap-2 mb-3">
-          <Briefcase className="w-4 h-4" />Tipo de Oferta
-          <span className="text-steel-500 normal-case font-normal">(multi-selección)</span>
-          {tipoFilter.length > 0 && (
-            <button onClick={() => setTipoFilter([])} className="ml-auto text-steel-500 hover:text-white transition-colors">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {TIPOS_OFERTA.map(tipo => {
-            const isActive = tipoFilter.includes(tipo)
-            const count = tipoCounts[tipo] || 0
-            return (
-              <button
-                key={tipo}
-                type="button"
-                onClick={() => setTipoFilter(prev => prev.includes(tipo) ? prev.filter(t => t !== tipo) : [...prev, tipo])}
-                style={isActive ? { boxShadow: '0 0 16px rgba(41,182,246,0.55), 0 0 5px rgba(41,182,246,0.3)' } : {}}
-                className={`glass-card rounded-xl px-4 py-3 flex flex-col items-center min-w-[110px] transition-all cursor-pointer border ${
-                  isActive ? 'border-accent-500/70 bg-accent-500/10 scale-[1.03]' : 'border-transparent hover:border-white/10 hover:bg-white/3'
-                }`}
-              >
-                <span className={`text-2xl font-bold tabular-nums ${isActive ? 'text-accent-300' : 'text-white'}`}>{count}</span>
-                <span className="text-[11px] text-steel-400 font-medium mt-0.5 text-center leading-tight">{tipo}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
+
 
       {/* Unidad de negocio breakdown */}
       {unidadStats.length > 0 && (
@@ -668,13 +685,14 @@ export default function OfertasPage() {
             )}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            {/* Grupo Ruiz — global "all units" highlighted card */}
+            {/* Grupo Ruiz — global "all units" card */}
             {(() => {
               const globalActive = unidadFilter.length === 0
               const globalCount = unidadStats.reduce((s, [, st]) => s + st.count, 0)
               const globalValue = unidadStats.reduce((s, [, st]) => s + st.value, 0)
               return (
                 <button
+                  key="unidad-total"
                   type="button"
                   onClick={() => setUnidadFilter([])}
                   style={{
@@ -713,51 +731,62 @@ export default function OfertasPage() {
         </div>
       )}
 
-      {/* Score filter buttons */}
+      {/* Score Summary Area (Centered & Enriched) */}
       {scoredOffers.some(o => o._score) && (
-        <div className="glass-card rounded-2xl p-5">
-          <h3 className="text-xs font-semibold text-accent-400 uppercase tracking-wider flex items-center gap-2 mb-3">
-            <Zap className="w-4 h-4" />Filtrar por Score
-            <span className="text-steel-500 normal-case font-normal">(acumulable con otros filtros)</span>
+        <div className="glass-card rounded-2xl p-6 flex flex-col items-center">
+          <h3 className="text-xs font-semibold text-accent-400 uppercase tracking-widest flex items-center gap-2 mb-6">
+            <Zap className="w-5 h-5 text-yellow-400" /> RESUMEN DE OPORTUNIDADES POR SCORE
             {scoreFilter.length > 0 && (
-              <button onClick={() => setScoreFilter([])} className="ml-auto text-steel-500 hover:text-white transition-colors">
-                <X className="w-3.5 h-3.5" />
+              <button 
+                onClick={() => setScoreFilter([])} 
+                className="ml-4 text-[9px] font-black bg-white/5 hover:bg-white/10 px-2 py-1 rounded transition-colors text-steel-500 hover:text-white border border-white/5 uppercase"
+              >
+                Resetear Filtro
               </button>
             )}
           </h3>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap justify-center gap-5 w-full max-w-4xl">
             {[
-              { label: 'Alto',  dot: '🟢', color: 'text-emerald-400', border: 'border-emerald-500/70', activeBg: 'bg-emerald-500/15', neon: '0 0 16px rgba(52,211,153,0.6), 0 0 5px rgba(52,211,153,0.3)' },
-              { label: 'Medio', dot: '🟡', color: 'text-amber-400',   border: 'border-amber-500/70',   activeBg: 'bg-amber-500/15',   neon: '0 0 16px rgba(251,191,36,0.6), 0 0 5px rgba(251,191,36,0.3)' },
-              { label: 'Bajo',  dot: '🔴', color: 'text-red-400',     border: 'border-red-500/70',     activeBg: 'bg-red-500/15',     neon: '0 0 16px rgba(248,113,113,0.6), 0 0 5px rgba(248,113,113,0.3)' },
-            ].map(({ label, dot, color, border, activeBg, neon }) => {
+              { label: 'Alto',  dot: '🟢', color: 'text-emerald-400', border: 'border-emerald-500/50', activeBg: 'bg-emerald-500/10', neon: '0 0 30px rgba(16,185,129,0.3)', hover: 'hover:border-emerald-500/30' },
+              { label: 'Medio', dot: '🟡', color: 'text-amber-400',   border: 'border-amber-500/50',   activeBg: 'bg-amber-500/10',   neon: '0 0 30px rgba(245,158,11,0.3)', hover: 'hover:border-amber-500/30' },
+              { label: 'Bajo',  dot: '🔴', color: 'text-red-400',     border: 'border-red-500/50',     activeBg: 'bg-red-500/10',     neon: '0 0 30px rgba(239,68,68,0.3)', hover: 'hover:border-red-500/30' },
+            ].map(({ label, dot, color, border, activeBg, neon, hover }) => {
               const isActive = scoreFilter.includes(label)
-              const count = scoreCounts[label] || 0
+              const stats = scoreStats[label] || { count: 0, value: 0 }
               return (
                 <button
                   key={label}
                   type="button"
                   onClick={() => setScoreFilter(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label])}
-                  style={isActive ? { boxShadow: neon } : {}}
-                  className={`flex items-center gap-3 px-5 py-3 rounded-xl border transition-all ${
+                  className={`flex items-center gap-5 px-8 py-5 rounded-3xl border transition-all duration-300 min-w-[240px] flex-1 sm:flex-initial group ${
                     isActive
-                      ? `${activeBg} ${border} scale-[1.03]`
-                      : 'border-white/5 bg-surface-800/60 hover:border-white/15 hover:bg-white/3'
+                      ? `${activeBg} ${border} scale-[1.05] shadow-[${neon}]`
+                      : `border-white/5 bg-surface-800/40 ${hover} hover:bg-white/5`
                   }`}
+                  style={isActive ? { boxShadow: neon } : {}}
                 >
-                  <span className="text-2xl leading-none">{dot}</span>
-                  <div className="text-left">
-                    <p className={`text-sm font-bold ${color}`}>{label}</p>
-                    <p className="text-xs text-steel-500">{count} oferta{count !== 1 ? 's' : ''}</p>
+                  <span className="text-4xl group-hover:scale-110 transition-transform">{dot}</span>
+                  <div className="text-left flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className={`text-sm font-black tracking-widest uppercase ${color}`}>{label}</p>
+                      <span className="text-xs text-steel-500 font-medium">{stats.count}</span>
+                    </div>
+                    <p className="text-lg font-black text-white mt-0.5 whitespace-nowrap">
+                      {formatCurrency(stats.value)}
+                    </p>
+                    <div className="w-full h-1 bg-white/5 rounded-full mt-2 overflow-hidden">
+                      <div 
+                        className={`h-full ${isActive ? (label === 'Alto' ? 'bg-emerald-500' : label === 'Medio' ? 'bg-amber-500' : 'bg-red-500') : 'bg-steel-800'} transition-all duration-700`} 
+                        style={{ width: `${Math.min((stats.count / (scoredOffers.length || 1)) * 100, 100)}%` }} 
+                      />
+                    </div>
                   </div>
-                  {isActive && <span className="ml-1 text-[10px] font-bold text-white bg-accent-500 rounded-full px-1.5 py-0.5">✓</span>}
                 </button>
               )
             })}
           </div>
         </div>
       )}
-
 
       {hasFilters && (
         <div className="flex items-center gap-3 text-xs text-steel-400">
@@ -778,25 +807,16 @@ export default function OfertasPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm" id="offers-table">
             <thead>
-              <tr className="border-b border-white/6">
+              <tr className="border-b border-white/6 bg-white/2">
                 {COLUMNS.map(({ field, label }) => (
                   <th key={field} onClick={() => toggleSort(field)}
-                    className="text-left px-4 py-3.5 text-steel-400 font-semibold tracking-wide uppercase text-xs cursor-pointer hover:text-white transition-colors select-none">
-                    <span className="inline-flex items-center gap-1.5">
+                    className="text-left px-2 py-2 text-steel-500 font-black tracking-tighter uppercase text-[9px] cursor-pointer hover:text-white transition-colors select-none">
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap">
                       {label}
-                      <ArrowUpDown className={`w-3 h-3 ${sortField === field ? 'text-accent-400' : 'text-steel-600'}`} />
+                      <ArrowUpDown className={`w-2.5 h-2.5 ${sortField === field ? 'text-accent-400' : 'text-steel-800'}`} />
                     </span>
                   </th>
                 ))}
-                <th
-                  onClick={() => toggleSort('_score')}
-                  className="px-4 py-3.5 text-center text-steel-400 font-semibold uppercase text-xs cursor-pointer hover:text-white transition-colors select-none">
-                  <span className="inline-flex items-center justify-center gap-1">
-                    <Zap className={`w-3 h-3 ${sortField === '_score' ? 'text-accent-400' : ''}`} />
-                    Score
-                    <ArrowUpDown className={`w-3 h-3 ${sortField === '_score' ? 'text-accent-400' : 'text-steel-600'}`} />
-                  </span>
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/4">
@@ -812,47 +832,50 @@ export default function OfertasPage() {
                 const scoreResult = oferta._score
 
                 return (
-                  <tr key={oferta.id} className="hover:bg-white/3 transition-colors group" style={{ animationDelay: `${i * 10}ms` }}>
-                    <td className="px-4 py-3.5">
+                  <tr key={oferta.id} className="hover:bg-white/3 transition-colors group" style={{ animationDelay: `${i * 5}ms` }}>
+                    <td className="px-2 py-1">
                       <a
                         href={hsOfertaUrl(oferta.id)}
                         target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-navy-900/50 border border-accent-500/20 text-accent-400 text-[10px] font-bold hover:bg-accent-500/15 transition-all"
+                        className="inline-flex items-center justify-center w-7 h-7 rounded bg-navy-900/50 border border-accent-500/20 text-accent-400 text-[9px] font-black hover:bg-accent-500/15 transition-all"
                       >
                         {p.n__de_oferta || '—'}
                       </a>
                     </td>
-                    <td className="px-4 py-3.5 text-steel-400 text-[10px] tabular-nums">{p.numero_de_oferta_heredado || '—'}</td>
-                    <td className="px-4 py-3.5 text-steel-300 text-xs font-medium truncate max-w-[100px]" title={dp.unidad_de_negocio_deal}>{dp.unidad_de_negocio_deal || '—'}</td>
-                    <td className="px-4 py-3.5 font-medium text-white max-w-[180px]">
+                    <td className="px-2 py-1 text-steel-400 text-[9px] tabular-nums font-medium">{p.numero_de_oferta_heredado || '—'}</td>
+                    <td className="px-2 py-1 text-steel-300 text-[9px] font-bold truncate max-w-[80px]" title={dp.unidad_de_negocio_deal}>{dp.unidad_de_negocio_deal || '—'}</td>
+                    <td className="px-3 py-1 font-medium text-white max-w-[280px]">
                       {e.dealName ? (
                         dealId ? (
-                          <a href={hsDealUrl(dealId)} target="_blank" rel="noopener noreferrer" className="hover:text-accent-300 transition-colors line-clamp-2 leading-tight text-xs">
+                          <a href={hsDealUrl(dealId)} target="_blank" rel="noopener noreferrer" className="hover:text-accent-300 transition-colors line-clamp-2 leading-tight text-[9px]">
                             {e.dealName}
                           </a>
-                        ) : <span className="line-clamp-2 leading-tight text-xs">{e.dealName}</span>
+                        ) : <span className="line-clamp-2 leading-tight text-[9px]">{e.dealName}</span>
                       ) : '—'}
                     </td>
-                    <td className="px-4 py-3.5 text-steel-300 text-xs max-w-[140px] truncate" title={e.companyName}>{e.companyName || '—'}</td>
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="flex flex-col items-center">
-                        <span className="text-emerald-400 font-bold text-xs">{dp.peso_total_cmr_toneladas ? `${dp.peso_total_cmr_toneladas} Tn` : '—'}</span>
-                        {scoreResult && (
-                          <span className={`text-[9px] font-bold ${scoreResult.color}`}>{scoreResult.score}%</span>
-                        )}
-                      </div>
+                    <td className="px-3 py-1 text-steel-400 text-[9px] truncate max-w-[120px]" title={stageMap[dp.dealstage] || dp.dealstage}>
+                      {stageMap[dp.dealstage] || dp.dealstage || '—'}
                     </td>
-                    <td className="px-4 py-3.5 text-steel-400 text-[10px] whitespace-nowrap">{dp.fecha_limite_para_ofertar || '—'}</td>
-                    <td className="px-4 py-3.5 text-steel-300 text-[10px] truncate max-w-[80px]" title={dp.ubicacion_provincia_obra__proyecto}>{dp.ubicacion_provincia_obra__proyecto || '—'}</td>
-                    <td className="px-4 py-3.5 text-steel-400 text-[10px] truncate max-w-[100px]" title={dp.madurez_en_adjudicacion_obra__proyecto}>{dp.madurez_en_adjudicacion_obra__proyecto || '—'}</td>
-                    <td className="px-4 py-3.5 text-steel-400 text-[10px] truncate max-w-[100px]" title={dp.tipo_de_obra__proyecto}>{dp.tipo_de_obra__proyecto || '—'}</td>
-                    <td className="px-4 py-3.5 text-steel-500 text-[10px] truncate max-w-[100px]" title={p.tipo_de_oferta}>{p.tipo_de_oferta || '—'}</td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-3 py-1 text-steel-300 text-[9px] max-w-[120px] truncate" title={e.companyName}>{e.companyName || '—'}</td>
+                    <td className="px-3 py-1 text-center text-emerald-400 font-bold text-[9px]">
+                      {dp.peso_total_cmr_toneladas ? `${dp.peso_total_cmr_toneladas}` : '—'}
+                    </td>
+                    <td className="px-3 py-1 text-steel-400 text-[9px] whitespace-nowrap">{dp.fecha_limite_para_ofertar || '—'}</td>
+                    <td className="px-3 py-1 text-steel-300 text-[9px] truncate max-w-[70px]" title={dp.ubicacion_provincia_obra__proyecto}>{dp.ubicacion_provincia_obra__proyecto || '—'}</td>
+                    <td className="px-3 py-1 text-steel-400 text-[9px] truncate max-w-[90px]" title={dp.tipo_de_obra__proyecto}>{dp.tipo_de_obra__proyecto || '—'}</td>
+                    <td className="px-3 py-1 text-steel-400 text-[9px] truncate max-w-[90px]" title={dp.madurez_en_adjudicacion_obra__proyecto}>{dp.madurez_en_adjudicacion_obra__proyecto || '—'}</td>
+                    <td className="px-3 py-1 text-steel-500 text-[9px] truncate max-w-[90px]" title={p.tipo_de_oferta}>{p.tipo_de_oferta || '—'}</td>
+                    <td className="px-2 py-1">
                       <StatusEditor
                         ofertaId={oferta.id}
                         currentStatus={p.estado_de_la_oferta_presupuesto}
                         onUpdate={handleStatusUpdate}
                       />
+                    </td>
+                    <td className="px-3 py-1 text-center">
+                      {scoreResult ? (
+                        <span className={`text-[10px] font-black ${scoreResult.color}`}>{scoreResult.score}%</span>
+                      ) : '—'}
                     </td>
                   </tr>
                 )

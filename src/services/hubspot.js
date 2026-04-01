@@ -24,6 +24,28 @@ export async function getOfertas() {
   return request('/ofertas');
 }
 
+/** Diccionario Cache de Etapas para no pedirlas cada vez */
+let _stageCache = null;
+
+/** Obtiene todos los pipelines y sus etapas para mapear IDs a nombres */
+export async function getDealStagesMap() {
+  if (_stageCache) return _stageCache;
+  const map = {};
+  try {
+    const pipelines = await request('/proxy/crm/v3/pipelines/deals');
+    (pipelines.results || []).forEach(pipeline => {
+      (pipeline.stages || []).forEach(stage => {
+        map[stage.id] = stage.label;
+      });
+    });
+    _stageCache = map;
+    return map;
+  } catch (err) {
+    console.warn('Error fetching stage map:', err);
+    return {};
+  }
+}
+
 const OFERTA_PROPERTIES = [
   'n__de_oferta', 
   'numero_de_oferta_heredado', 
@@ -83,9 +105,10 @@ export async function getAllOfertas({ onProgress } = {}) {
     'unidad_de_negocio_deal',
     'prioridad_de_obra__proyecto',
     'ubicacion_provincia_obra__proyecto',
-    'peso_total_cmr_toneladas',
     'madurez_en_adjudicacion_obra__proyecto',
     'tipo_de_obra__proyecto',
+    'dealstage',
+    'stage',
     'valor_actual',
     'amount',
     'numero_total_de_depositos',
@@ -102,6 +125,10 @@ export async function getAllOfertas({ onProgress } = {}) {
     const firstDealId = (o.associations?.deals?.results || [])[0]?.id;
     const firstCompId = (o.associations?.companies?.results || [])[0]?.id;
     const dealProps = firstDealId ? (dealMap[firstDealId] || {}) : {};
+    if (firstDealId) {
+      console.log(`[HS DEBUG] Deal ${firstDealId} props keys:`, Object.keys(dealProps));
+      console.log(`[HS DEBUG] Deal stage value:`, dealProps.dealstage);
+    }
     o._enriched = {
       dealId: firstDealId || null,
       dealName: dealProps.dealname || '',

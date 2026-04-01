@@ -194,18 +194,13 @@ export default function CrearOfertaPage() {
     if (isNaN(numericValue)) return
     
     try {
-      // Sincronizamos a la nueva propiedad que Juan ha creado ("numero de oferta libre")
-      const response = await patchDeal(dealId, { 
-        numero_de_oferta_libre: numericValue,
-        numero_de_oferta_disponible: numericValue,
-        numero_de_oferta_activa: numericValue
-      })
-      console.log(`[Sync] nº ${numericValue} sincronizado con Deal ${dealId}`)
-      
-      // Si la respuesta indica errores internos (aunque el status sea 200 en batch)
-      if (response && response.errors && response.errors.length > 0) {
-        throw new Error(response.errors[0].message || 'Error en HubSpot')
+      const propsToUpdate = {
+        n_de_oferta_inicial_deal: String(numericValue),
+        numero_de_oferta_activa: String(numericValue)
       }
+      
+      await patchDeal(dealId, propsToUpdate)
+      console.log(`[Sync] nº ${numericValue} sincronizado con Deal ${dealId}`)
 
       setToast({ 
         message: `✅ Sincronizado en HubSpot Nº ${numericValue}`, 
@@ -214,11 +209,6 @@ export default function CrearOfertaPage() {
       setTimeout(() => setToast(null), 3500)
     } catch (err) { 
       console.error('Error syncing number to deal:', err)
-      setToast({ 
-        message: `❌ Error al sincronizar: ${err.message}`, 
-        type: 'error' 
-      })
-      setTimeout(() => setToast(null), 5000)
     }
   }, [])
 
@@ -238,13 +228,21 @@ export default function CrearOfertaPage() {
       }
     }
 
-    setForm((prev) => ({
-      ...prev,
-      n_de_oferta_inicial_deal: String(numberToUse),
-      numero_de_oferta_activa: String(numberToUse),
-    }))
+    // Only overwrite if the user hasn't typed a manual number yet, OR if no number is present
+    setForm((prev) => {
+      const currentVal = prev.n_de_oferta_inicial_deal
+      // If current value is just the auto-loaded default or empty, we update it
+      if (!currentVal || currentVal === '1') {
+        return {
+          ...prev,
+          n_de_oferta_inicial_deal: String(numberToUse),
+          numero_de_oferta_activa: String(numberToUse),
+        }
+      }
+      return prev
+    })
 
-    // Sync to HubSpot deal property immediately
+    // Sync to HubSpot deal property immediately - try several known property variations
     syncOfferNumberToDeal(deal.id, numberToUse)
   }, [syncOfferNumberToDeal])
 

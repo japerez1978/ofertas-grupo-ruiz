@@ -4,7 +4,7 @@ import {
   Search, X, Filter, RefreshCw, FileText,
   ExternalLink, Briefcase, AlertTriangle, ChevronDown
 } from 'lucide-react'
-import { getDealsWithoutOfertas } from '../services/hubspot'
+import { getDealsWithoutOfertas, getDealStagesMap } from '../services/hubspot'
 import { formatCurrency, formatDate } from '../utils/helpers'
 
 /* ─── Skeleton de fila (UX mientras carga) ─── */
@@ -105,15 +105,22 @@ export default function NegociosSinOfertaPage() {
   const [search, setSearch]         = useState('')
   const [estadoFilter, setEstadoFilter] = useState([])
   const [tipoFilter, setTipoFilter] = useState([])
+  const [stageFilter, setStageFilter] = useState([])
+  const [stageMap, setStageMap] = useState({})
 
   useEffect(() => {
-    let hasCachedData = false
+    let hasCachedData = false;
+    getDealStagesMap().then(setStageMap).catch(() => {})
+    
+    // RESTAURAR LÓGICA DE CACHE: Solo cargar de HubSpot si no tenemos datos frescos
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
-      if (cached.data && cached.ts && Date.now() - cached.ts < CACHE_TTL) {
+      const CACHE_LONG_TTL = 60 * 60 * 1000 // 60 minutos de tranquilidad
+      if (cached.data && cached.ts && Date.now() - cached.ts < CACHE_LONG_TTL) {
         setDeals(cached.data)
         setLoading(false)
         hasCachedData = true
+        console.log('[CACHE] Cargando negocios desde memoria local')
       }
     } catch { /* ignore */ }
     
@@ -155,6 +162,13 @@ export default function NegociosSinOfertaPage() {
     return [...s].sort()
   }, [deals])
 
+  const stageOptions = useMemo(() => {
+    const s = new Set()
+    deals.forEach(d => { const v = d.properties?.dealstage; if (v) s.add(v) })
+    return [...s].map(id => ({ value: id, label: stageMap[id] || id }))
+      .sort((a,b) => a.label.localeCompare(b.label))
+  }, [deals, stageMap])
+
   const tipoOptions = useMemo(() => {
     const s = new Set()
     deals.forEach(d => { const v = d.properties?.sector_partida; if (v) s.add(v) })
@@ -177,15 +191,17 @@ export default function NegociosSinOfertaPage() {
       list = list.filter(d => estadoFilter.includes(d.properties?.madurez_en_adjudicacion_obra__proyecto))
     if (tipoFilter.length > 0)
       list = list.filter(d => tipoFilter.includes(d.properties?.sector_partida))
+    if (stageFilter.length > 0)
+      list = list.filter(d => stageFilter.includes(d.properties?.dealstage))
     return list
-  }, [deals, search, estadoFilter, tipoFilter])
+  }, [deals, search, estadoFilter, tipoFilter, stageFilter])
 
   const totalValue = useMemo(() =>
     filtered.reduce((s, d) => s + parseFloat(d.properties?.amount || 0), 0), [filtered])
 
-  const hasFilters = search || estadoFilter.length || tipoFilter.length
+  const hasFilters = search || estadoFilter.length || tipoFilter.length || stageFilter.length
 
-  function clearAll() { setSearch(''); setEstadoFilter([]); setTipoFilter([]) }
+  function clearAll() { setSearch(''); setEstadoFilter([]); setTipoFilter([]); setStageFilter([]) }
 
   // (sin spinner de página completa — usamos skeleton table en su lugar)
 
@@ -257,6 +273,16 @@ export default function NegociosSinOfertaPage() {
       {/* Filtros */}
       <div className="flex flex-wrap gap-2 items-start">
         <ChipFilter
+          icon={FileText}
+          label="Etapa"
+          options={stageOptions.map(o => o.label)}
+          selected={stageFilter.map(id => stageMap[id] || id)}
+          onChange={(newLabels) => {
+            const newIds = newLabels.map(lbl => stageOptions.find(o => o.label === lbl)?.value).filter(Boolean)
+            setStageFilter(newIds)
+          }}
+        />
+        <ChipFilter
           icon={Filter}
           label="Estado de partida"
           options={estadoOptions}
@@ -296,7 +322,7 @@ export default function NegociosSinOfertaPage() {
           <table className="w-full text-sm" id="negocios-sin-oferta-table">
             <thead>
               <tr className="border-b border-white/6">
-                {['Negocio / Partida', 'Empresa', 'Unidad', 'Peso RCM (t)', 'Fecha Obj. Oferta', 'Provincia', 'Tipo Partida', 'Estado Partida', ''].map((col, i) => (
+                {['Negocio / Partida', 'Empresa', 'Etapa', 'Unidad', 'Peso RCM (t)', 'Fecha Obj. Oferta', 'Provincia', 'Tipo Partida', 'Estado Partida', ''].map((col, i) => (
                   <th key={i} className="text-left px-4 py-3.5 text-steel-400 font-semibold tracking-wide uppercase text-[10px] whitespace-nowrap">
                     {col}
                   </th>
@@ -331,7 +357,7 @@ export default function NegociosSinOfertaPage() {
                 return (
                   <tr key={deal.id} className="hover:bg-white/3 transition-colors group">
                     {/* Nombre del negocio */}
-                    <td className="px-4 py-3 max-w-[260px]">
+                    <td className="px-4 py-3 max-w-[360px]">
                       <a
                         href={hsDealUrl(deal.id)}
                         target="_blank" rel="noopener noreferrer"
@@ -348,6 +374,11 @@ export default function NegociosSinOfertaPage() {
                     {/* Empresa */}
                     <td className="px-4 py-3 text-steel-300 text-xs max-w-[160px]">
                       <span className="line-clamp-2 leading-snug" title={deal._companyName}>{deal._companyName || '—'}</span>
+                    </td>
+
+                    {/* Etapa */}
+                    <td className="px-4 py-3 text-steel-400 text-[10px] max-w-[120px] truncate" title={stageMap[p.dealstage] || p.dealstage}>
+                      {stageMap[p.dealstage] || p.dealstage || '—'}
                     </td>
 
                     {/* Unidad */}
