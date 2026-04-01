@@ -151,17 +151,17 @@ async function batchReadMap(objectType, ids, propName) {
 
 /** Escribe el score calculado en la propiedad score_rcm del Deal en HubSpot */
 export async function writeDealScore(dealId, score) {
-  return request(`/proxy/crm/v1/objects/deals/${dealId}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ properties: { score_rcm: String(score) } })
-  });
+  return patchDeal(dealId, { score_rcm: String(score) });
 }
 
-/** Actualiza propiedades de un Deal directamente en HubSpot */
+
+/** Actualiza propiedades de un Deal usando el endpoint de Batch (POST) para evitar problemas de CORS con PATCH */
 export async function patchDeal(id, properties) {
-  return request(`/proxy/crm/v3/objects/deals/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ properties }),
+  return request(`/proxy/crm/v3/objects/deals/batch/update`, {
+    method: 'POST',
+    body: JSON.stringify({
+      inputs: [{ id, properties }]
+    }),
   });
 }
 
@@ -292,10 +292,13 @@ export async function getDealsWithoutOfertas({ onProgress } = {}) {
 }
 
 /** Actualiza propiedades de una oferta (objeto custom 2-198173351) directamente en HubSpot */
+/** Actualiza estado de una oferta usando Batch (POST) para evitar CORS con PATCH */
 export async function patchOferta(id, properties) {
-  return request(`/proxy/crm/v3/objects/2-198173351/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ properties }),
+  return request(`/proxy/crm/v3/objects/2-198173351/batch/update`, {
+    method: 'POST',
+    body: JSON.stringify({
+      inputs: [{ id, properties }]
+    }),
   });
 }
 
