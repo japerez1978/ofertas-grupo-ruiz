@@ -195,7 +195,6 @@ export default function CrearOfertaPage() {
     
     try {
       // Sincronizamos a la nueva propiedad que Juan ha creado ("numero de oferta libre")
-      // y mantenemos las anteriores por seguridad.
       await patchDeal(dealId, { 
         numero_de_oferta_libre: numericValue,
         numero_de_oferta_disponible: numericValue,
@@ -203,14 +202,18 @@ export default function CrearOfertaPage() {
       })
       console.log(`[Sync] nº ${numericValue} sincronizado con Deal ${dealId}`)
       
-      // Mostrar feedback visual al usuario
       setToast({ 
         message: `✅ Sincronizado en HubSpot Nº ${numericValue}`, 
         type: 'success' 
       })
       setTimeout(() => setToast(null), 3500)
     } catch (err) { 
-      console.error('Error syncing number to deal:', err) 
+      console.error('Error syncing number to deal:', err)
+      setToast({ 
+        message: `❌ Error al sincronizar: ${err.message}`, 
+        type: 'error' 
+      })
+      setTimeout(() => setToast(null), 5000)
     }
   }, [])
 

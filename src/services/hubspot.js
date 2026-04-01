@@ -155,9 +155,9 @@ export async function writeDealScore(dealId, score) {
 }
 
 
-/** Actualiza propiedades de un Deal usando el endpoint de Batch (POST) para evitar problemas de CORS con PATCH */
+/** Actualiza propiedades de un Deal usando el endpoint de Batch V1 (POST) */
 export async function patchDeal(id, properties) {
-  return request(`/proxy/crm/v3/objects/deals/batch/update`, {
+  return request(`/proxy/crm/v1/objects/deals/batch/update`, {
     method: 'POST',
     body: JSON.stringify({
       inputs: [{ id, properties }]
