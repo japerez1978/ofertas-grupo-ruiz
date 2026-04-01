@@ -25,15 +25,9 @@ export async function getOfertas() {
 }
 
 const OFERTA_PROPERTIES = [
-  'n__de_oferta', 
-  'numero_de_oferta_heredado', 
-  'estado_de_la_oferta_presupuesto',
-  'tipo_de_oferta', 
-  'valor_oferta', 
-  'empresa_vinculada_a_oferta',
-  'unidad_de_negocio_oferta', 
-  'presupuestador_asignado', 
-  'hs_createdate'
+  'n__de_oferta', 'numero_de_oferta_heredado', 'estado_de_la_oferta_presupuesto',
+  'tipo_de_oferta', 'valor_oferta', 'empresa_vinculada_a_oferta',
+  'unidad_de_negocio_oferta', 'presupuestador_asignado', 'createdate'
 ].join(',');
 
 /**
@@ -177,14 +171,9 @@ export async function writeDealScoresBatch(scorePairs, onProgress) {
   // scorePairs: [{ dealId, score }, ...]
   if (!scorePairs.length) return;
   
-  // DEDUPLICAR IDs: HubSpot no acepta IDs duplicados en una petición Batch.
-  const uniqueDeals = {};
-  scorePairs.forEach(p => { uniqueDeals[p.dealId] = p.score; });
-  const uniquePairs = Object.entries(uniqueDeals).map(([dealId, score]) => ({ dealId, score }));
-
   const CHUNK_SIZE = 100;
-  const chunks = chunkArray(uniquePairs, CHUNK_SIZE);
-  const total = uniquePairs.length;
+  const chunks = chunkArray(scorePairs, CHUNK_SIZE);
+  const total = scorePairs.length;
   let processed = 0;
 
   for (const chunk of chunks) {
