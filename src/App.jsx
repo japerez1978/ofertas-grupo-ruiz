@@ -4,6 +4,7 @@ import OfertasPage from './pages/OfertasPage'
 import CrearOfertaPage from './pages/CrearOfertaPage'
 import DetalleOfertaPage from './pages/DetalleOfertaPage'
 import ScoringPage from './pages/ScoringPage'
+import NegociosSinOfertaPage from './pages/NegociosSinOfertaPage'
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Route path="/crear" element={<CrearOfertaPage />} />
         <Route path="/oferta/:id" element={<DetalleOfertaPage />} />
         <Route path="/scoring" element={<ScoringPage />} />
+        <Route path="/negocios" element={<NegociosSinOfertaPage />} />
       </Route>
     </Routes>
   )

@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import {
   Search, ArrowUpDown, FileText,
   ChevronDown, X, Briefcase, Layers, RefreshCw,
-  ExternalLink, Zap, CloudUpload, Filter
+  ExternalLink, Zap, CloudUpload, Filter, Check
 } from 'lucide-react'
-import { getAllOfertas, writeDealScoresBatch } from '../services/hubspot'
+import { getAllOfertas, writeDealScoresBatch, patchOferta } from '../services/hubspot'
 import { getOfferStatusBadge, formatCurrency, OFFER_STATUSES } from '../utils/helpers'
 import { loadMatrices } from '../services/supabase'
 import { getMatrixForUnidad } from '../data/matrices'
@@ -86,6 +86,72 @@ function StatCard({ label, count, color, active, onClick }) {
       <span className={`text-2xl font-bold tabular-nums ${color}`}>{count}</span>
       <span className="text-[11px] text-steel-400 font-medium mt-0.5 text-center leading-tight">{label}</span>
     </button>
+  )
+}
+
+/* ─── Editor de estado inline ─── */
+function StatusEditor({ ofertaId, currentStatus, onUpdate }) {
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    function h(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+  const badge = getOfferStatusBadge(currentStatus)
+  async function handleSelect(newStatus) {
+    if (newStatus === currentStatus) { setOpen(false); return }
+    setOpen(false)
+    setSaving(true)
+    try {
+      await patchOferta(ofertaId, { estado_de_la_oferta_presupuesto: newStatus })
+      onUpdate(ofertaId, newStatus)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e) { console.error('Error actualizando estado:', e) }
+    finally { setSaving(false) }
+  }
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => !saving && setOpen(!open)}
+        title="Clic para cambiar estado"
+        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer select-none
+          ${badge.color}
+          ${saving ? 'opacity-60 cursor-wait' : 'hover:ring-2 hover:ring-white/25 hover:scale-105 active:scale-95'}
+        `}
+      >
+        {saving
+          ? <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
+          : saved
+            ? <Check className="w-2.5 h-2.5" />
+            : null
+        }
+        {badge.label}
+        {!saving && <ChevronDown className={`w-2.5 h-2.5 opacity-60 transition-transform ${open ? 'rotate-180' : ''}`} />}
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-56 max-h-72 overflow-y-auto rounded-xl bg-surface-700 border border-white/10 shadow-2xl py-1 left-0 top-full">
+          <p className="px-3 py-1.5 text-[10px] text-steel-500 uppercase tracking-wider font-semibold">Cambiar estado</p>
+          {OFFER_STATUSES.map(s => (
+            <button
+              key={s.value}
+              onClick={() => handleSelect(s.value)}
+              className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2.5 transition-colors ${
+                s.value === currentStatus ? 'bg-white/8 text-white font-bold' : 'text-steel-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full shrink-0 ${s.color.split(' ')[0].replace('/20', '')}`} />
+              {s.label}
+              {s.value === currentStatus && <Check className="w-3 h-3 ml-auto text-accent-400" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -282,6 +348,14 @@ export default function OfertasPage() {
     setActiveStatCard([]); setUnidadFilter([]); setSearch('')
     setScoreFilter([])
   }
+  function handleStatusUpdate(ofertaId, newStatus) {
+    setOfertas(prev => prev.map(o =>
+      o.id === ofertaId
+        ? { ...o, properties: { ...o.properties, estado_de_la_oferta_presupuesto: newStatus } }
+        : o
+    ))
+  }
+
   async function handleSaveScores() {
     const pairs = scoredFiltered
       .filter(o => o._score && o._enriched?.dealId)
@@ -660,7 +734,11 @@ export default function OfertasPage() {
                     </td>
                     <td className="px-4 py-3.5 text-steel-400 text-xs">{p.tipo_de_oferta || '—'}</td>
                     <td className="px-4 py-3.5">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge.color}`}>{statusBadge.label}</span>
+                      <StatusEditor
+                        ofertaId={oferta.id}
+                        currentStatus={p.estado_de_la_oferta_presupuesto}
+                        onUpdate={handleStatusUpdate}
+                      />
                     </td>
                     <td className="px-4 py-3.5 font-semibold text-emerald-400 tabular-nums text-sm">{formatCurrency(p.valor_oferta)}</td>
                     {/* Score column */}

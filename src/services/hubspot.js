@@ -172,6 +172,125 @@ export async function writeDealScoresBatch(scorePairs) {
   });
 }
 
+// ─── Propiedades a cargar para negocios sin oferta ───────────────────────────
+const DEAL_WITHOUT_OFERTA_PROPS = [
+  'dealname', 'dealstage', 'amount', 'unidad_de_negocio_deal',
+  'peso_total_cmr_toneladas', 'fecha_limite_para_ofertar',
+  'ubicacion_provincia_obra__proyecto', 'sector_partida',
+  'tipo_de_obra__proyecto', 'madurez_en_adjudicacion_obra__proyecto',
+  'prioridad_de_obra__proyecto', 'closedate',
+].join(',');
+
+// Etapas de pipeline a excluir de la vista "Negocios sin oferta"
+const EXCLUDED_STAGE_LABELS = [
+  'Oport. descartada (internamente)',
+  'Oport. Perdida (por cliente)',
+];
+
+/**
+ * Obtiene todos los deals (negocios) que NO tienen ninguna oferta asociada.
+ *
+ * Optimizaciones:
+ *  - Reutiliza el caché de OfertasPage (gr_ofertas_cache) si está fresco (<20min)
+ *    para saltarse la Fase 1 completamente.
+ *  - Si no hay caché, ejecuta Fase 0 (pipeline stages) y Fase 1 (oferta IDs) EN PARALELO.
+ */
+export async function getDealsWithoutOfertas({ onProgress } = {}) {
+  onProgress?.({ partial: [], loaded: 0, phase: 'scanning' });
+
+  // ─── Intentar reutilizar caché de OfertasPage para saltar el escaneo de asociaciones ────
+  let dealIdsFromOfertasCache = null;
+  try {
+    const cached = JSON.parse(localStorage.getItem('gr_ofertas_cache') || '{}');
+    if (cached.data && cached.ts && Date.now() - cached.ts < 20 * 60 * 1000) {
+      const ids = new Set();
+      cached.data.forEach(o => { if (o._enriched?.dealId) ids.add(String(o._enriched.dealId)); });
+      if (ids.size > 0) dealIdsFromOfertasCache = ids;
+    }
+  } catch { /* ignore */ }
+
+  // ─── Helpers internos ────────────────────────────────────────────────────────
+  async function _fetchExcludedStageIds() {
+    const ids = new Set();
+    try {
+      const pipelines = await request('/proxy/crm/v3/pipelines/deals');
+      (pipelines.results || []).forEach(pipeline =>
+        (pipeline.stages || []).forEach(stage => {
+          if (EXCLUDED_STAGE_LABELS.includes(stage.label)) ids.add(stage.id);
+        })
+      );
+    } catch (e) {
+      console.warn('[getDealsWithoutOfertas] No se pudieron obtener etapas del pipeline:', e.message);
+    }
+    return ids;
+  }
+
+  async function _fetchDealIdsWithOfertas() {
+    const ids = new Set();
+    let after = null;
+    for (let page = 0; page < 30; page++) {
+      const afterParam = after ? `&after=${after}` : '';
+      const data = await request(
+        `/proxy/crm/v3/objects/2-198173351?limit=100&properties=n__de_oferta&associations=deals${afterParam}`
+      ).catch(() => ({ results: [] }));
+      (data.results || []).forEach(o =>
+        (o.associations?.deals?.results || []).forEach(a => ids.add(String(a.id)))
+      );
+      if (data.paging?.next?.after) after = data.paging.next.after;
+      else break;
+    }
+    return ids;
+  }
+
+  // ─── Fase 0 + Fase 1 en paralelo ─────────────────────────────────────────────
+  const [excludedStageIds, dealIdsWithOfertas] = await Promise.all([
+    _fetchExcludedStageIds(),
+    dealIdsFromOfertasCache
+      ? Promise.resolve(dealIdsFromOfertasCache)   // ← caché disponible: 0 llamadas API
+      : _fetchDealIdsWithOfertas(),
+  ]);
+
+  // ─── Fase 2: paginar todos los deals ─────────────────────────────────────────
+  let allDeals = [];
+  const companyIds = new Set();
+  let after = null;
+  for (let page = 0; page < 50; page++) {
+    const afterParam = after ? `&after=${after}` : '';
+    const data = await request(
+      `/proxy/crm/v3/objects/deals?limit=100&properties=${DEAL_WITHOUT_OFERTA_PROPS}&associations=companies${afterParam}`
+    ).catch(() => ({ results: [] }));
+    const sinOferta = (data.results || []).filter(d =>
+      !dealIdsWithOfertas.has(String(d.id)) &&
+      (excludedStageIds.size === 0 || !excludedStageIds.has(d.properties?.dealstage))
+    );
+    sinOferta.forEach(d => {
+      (d.associations?.companies?.results || []).forEach(a => companyIds.add(String(a.id)));
+    });
+    allDeals = [...allDeals, ...sinOferta];
+    onProgress?.({ partial: [...allDeals], loaded: allDeals.length, phase: 'loading' });
+    if (data.paging?.next?.after) after = data.paging.next.after;
+    else break;
+  }
+
+  // ─── Fase 3: enriquecimiento con nombres de empresa ──────────────────────────
+  const companyMap = await batchReadMap('companies', [...companyIds], 'name');
+  allDeals.forEach(d => {
+    const firstCompId = (d.associations?.companies?.results || [])[0]?.id;
+    d._companyName = firstCompId ? (companyMap[firstCompId] || '') : '';
+  });
+
+  onProgress?.({ partial: allDeals, loaded: allDeals.length, phase: 'done' });
+  return { results: allDeals };
+}
+
+/** Actualiza propiedades de una oferta (objeto custom 2-198173351) directamente en HubSpot */
+export async function patchOferta(id, properties) {
+  return request(`/proxy/crm/v3/objects/2-198173351/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ properties }),
+  });
+}
+
 function chunkArray(arr, size) {
   const chunks = [];
   for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
