@@ -389,7 +389,10 @@ export default function OfertasPage() {
       Medio: { count: 0, value: 0 }, 
       Bajo:  { count: 0, value: 0 } 
     }
-    scoredOffers.forEach(o => {
+    // We want the score summaries to update with OTHER filters 
+    // BUT maybe not with themselves to avoid 'bliking' all to 0
+    // Actually, user asked to update with ALL filters.
+    filtered.forEach(o => {
       const label = o._score?.label
       if (label && stats[label]) {
         stats[label].count++
@@ -397,30 +400,35 @@ export default function OfertasPage() {
       }
     })
     return stats
-  }, [scoredOffers])
+  }, [filtered])
 
-  const { unidadStats, estadoPartidaOptions, tipoPartidaOptions, stageOptions } = useMemo(() => {
-    // We use the raw dataset (ofertas) for the filter options 
-    // so they NEVER vanish when an option is selected.
+  const { unidadStats } = useMemo(() => {
     const uMap = {}
-    const epSet = new Set()
-    const tpSet = new Set()
-    const sSet = new Set()
-
-    ofertas.forEach(o => {
+    // The summary buttons should reflect the current filter 
+    filtered.forEach(o => {
       const u = o.properties?.unidad_de_negocio_oferta
       if (u) {
         if (!uMap[u]) uMap[u] = { count: 0, value: 0 }
         uMap[u].count++
         uMap[u].value += parseFloat(o.properties?.valor_oferta || 0)
       }
-      
+    })
+    return {
+      unidadStats: Object.entries(uMap).sort((a, b) => b[1].value - a[1].value)
+    }
+  }, [filtered])
+
+  const { estadoPartidaOptions, tipoPartidaOptions, stageOptions } = useMemo(() => {
+    // Keep options anchored to 'ofertas' (raw data) so they don't disappear
+    const epSet = new Set()
+    const tpSet = new Set()
+    const sSet = new Set()
+
+    ofertas.forEach(o => {
       const ep = o._enriched?.dealProps?.madurez_en_adjudicacion_obra__proyecto
       if (ep) epSet.add(ep)
-      
       const tp = o._enriched?.dealProps?.tipo_de_obra__proyecto
       if (tp) tpSet.add(tp)
-
       const s = o._enriched?.dealProps?.dealstage
       if (s) sSet.add(s)
     })
@@ -431,7 +439,6 @@ export default function OfertasPage() {
     })).sort((a,b) => a.label.localeCompare(b.label))
 
     return {
-      unidadStats: Object.entries(uMap).sort((a, b) => b[1].value - a[1].value),
       estadoPartidaOptions: [...epSet].sort(),
       tipoPartidaOptions: [...tpSet].sort(),
       stageOptions: sortedStages
