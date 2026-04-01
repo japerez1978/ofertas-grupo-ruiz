@@ -166,11 +166,11 @@ export async function patchDeal(id, properties) {
   });
 }
 
-/** Escribe scores en lote para múltiples deals */
+/** Escribe scores en lote para múltiples deals usando v3 batch API */
 export async function writeDealScoresBatch(scorePairs) {
   // scorePairs: [{ dealId, score }, ...]
   if (!scorePairs.length) return;
-  return request('/proxy/crm/v1/objects/deals/batch/update', {
+  return request('/proxy/crm/v3/objects/deals/batch/update', {
     method: 'POST',
     body: JSON.stringify({
       inputs: scorePairs.map(({ dealId, score }) => ({

@@ -195,13 +195,18 @@ export default function CrearOfertaPage() {
     
     try {
       // Sincronizamos a la nueva propiedad que Juan ha creado ("numero de oferta libre")
-      await patchDeal(dealId, { 
+      const response = await patchDeal(dealId, { 
         numero_de_oferta_libre: numericValue,
         numero_de_oferta_disponible: numericValue,
         numero_de_oferta_activa: numericValue
       })
       console.log(`[Sync] nº ${numericValue} sincronizado con Deal ${dealId}`)
       
+      // Si la respuesta indica errores internos (aunque el status sea 200 en batch)
+      if (response && response.errors && response.errors.length > 0) {
+        throw new Error(response.errors[0].message || 'Error en HubSpot')
+      }
+
       setToast({ 
         message: `✅ Sincronizado en HubSpot Nº ${numericValue}`, 
         type: 'success' 
