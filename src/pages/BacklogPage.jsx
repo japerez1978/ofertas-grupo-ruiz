@@ -66,8 +66,8 @@ export default function BacklogPage() {
 
   // --- Actions ---
   const handlePresupuestar = (item) => {
-    // Navigate to crear page with backlog reference
-    navigate(`/crear?from_backlog=${item.id}`, { state: { backlogItem: item } })
+    // Open in new tab so user stays on Backlog
+    window.open(`/crear?from_backlog=${item.id}`, '_blank')
   }
 
   const handleMarkDone = async (item) => {
