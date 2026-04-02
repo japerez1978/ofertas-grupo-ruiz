@@ -114,6 +114,9 @@ export async function getAllOfertas({ onProgress } = {}) {
     'numero_total_de_depositos',
     'sector_partida',
     'score_rcm',
+    'peso_total_cmr_toneladas',
+    'fecha_objetivo_para_ofertar',
+    'closedate',
   ];
   const [dealMap, companyMap] = await Promise.all([
     batchReadProps('deals', [...dealIds], DEAL_SCORING_PROPS),
@@ -232,7 +235,7 @@ export async function writeDealScoresBatch(scorePairs, onProgress) {
 // ─── Propiedades a cargar para negocios sin oferta ───────────────────────────
 const DEAL_WITHOUT_OFERTA_PROPS = [
   'dealname', 'dealstage', 'amount', 'unidad_de_negocio_deal',
-  'peso_total_cmr_toneladas', 'fecha_limite_para_ofertar',
+  'peso_total_cmr_toneladas', 'fecha_objetivo_para_ofertar',
   'ubicacion_provincia_obra__proyecto', 'sector_partida',
   'tipo_de_obra__proyecto', 'madurez_en_adjudicacion_obra__proyecto',
   'prioridad_de_obra__proyecto', 'closedate',

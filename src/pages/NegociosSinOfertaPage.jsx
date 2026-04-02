@@ -323,7 +323,7 @@ export default function NegociosSinOfertaPage() {
             <thead>
               <tr className="border-b border-white/6">
                 {['Negocio / Partida', 'Empresa', 'Etapa', 'Unidad', 'Peso RCM (t)', 'Fecha Obj. Oferta', 'Provincia', 'Tipo Partida', 'Estado Partida', ''].map((col, i) => (
-                  <th key={i} className="text-left px-4 py-3.5 text-steel-400 font-semibold tracking-wide uppercase text-[10px] whitespace-nowrap">
+                  <th key={i} className="text-left px-5 py-4 text-steel-400 font-bold tracking-wide uppercase text-[11px] whitespace-nowrap">
                     {col}
                   </th>
                 ))}
@@ -345,8 +345,8 @@ export default function NegociosSinOfertaPage() {
                     </tr>
                   ) : filtered.map(deal => {
                 const p = deal.properties || {}
-                // Fecha obj: intentamos fecha_limite_para_ofertar, si no closedate
-                const fechaRaw = p.fecha_limite_para_ofertar || p.closedate
+                // Fecha obj: intentamos fecha_objetivo_para_ofertar, si no closedate
+                const fechaRaw = p.fecha_objetivo_para_ofertar || p.closedate
                 const fechaStr = fechaRaw ? formatDate(fechaRaw) : '—'
 
                 // Urgencia de fecha
@@ -354,85 +354,90 @@ export default function NegociosSinOfertaPage() {
                 const isUrgente = fechaDate && fechaDate < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
                 const isVencida = fechaDate && fechaDate < new Date()
 
+                const stageName = String(stageMap[p.dealstage] || p.dealstage).toLowerCase()
+                const isLostOrDiscarded = stageName.includes('perdid') || stageName.includes('descartad')
+                const isWon = stageName.includes('ganad') || stageName.includes('won')
+
+                let rowBg = 'hover:bg-white/4'
+                if (isLostOrDiscarded) rowBg = 'bg-[#ff1a40]/15 hover:bg-[#ff1a40]/25 shadow-[inset_0_0_25px_rgba(255,26,64,0.25)] border-y border-[#ff1a40]/30'
+                if (isWon) rowBg = 'bg-[#00e676]/15 hover:bg-[#00e676]/25 shadow-[inset_0_0_25px_rgba(0,230,118,0.25)] border-y border-[#00e676]/30'
+
                 return (
-                  <tr key={deal.id} className="hover:bg-white/3 transition-colors group">
+                  <tr key={deal.id} className={`${rowBg} transition-colors group`}>
                     {/* Nombre del negocio */}
-                    <td className="px-4 py-3 max-w-[360px]">
+                    <td className="px-5 py-4 max-w-[420px]">
                       <a
                         href={hsDealUrl(deal.id)}
                         target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-start gap-1.5 font-medium text-white hover:text-amber-300 transition-colors group/link"
                       >
-                        <span className="line-clamp-2 leading-snug text-sm" title={p.dealname}>{p.dealname || '—'}</span>
-                        <ExternalLink className="w-3 h-3 shrink-0 mt-0.5 opacity-0 group-hover/link:opacity-100 text-amber-400 transition-opacity" />
+                        <span className="line-clamp-2 leading-snug text-[15px]" title={p.dealname}>{p.dealname || '—'}</span>
+                        <ExternalLink className="w-4 h-4 shrink-0 mt-0.5 opacity-0 group-hover/link:opacity-100 text-amber-400 transition-opacity" />
                       </a>
                       {p.amount && (
-                        <p className="text-emerald-400 text-[10px] font-semibold mt-0.5 tabular-nums">{formatCurrency(p.amount)}</p>
+                        <p className="text-emerald-400 text-xs font-semibold mt-1 tabular-nums">{formatCurrency(p.amount)}</p>
                       )}
                     </td>
 
                     {/* Empresa */}
-                    <td className="px-4 py-3 text-steel-300 text-xs max-w-[160px]">
+                    <td className="px-5 py-4 text-steel-300 text-[13px] max-w-[200px]">
                       <span className="line-clamp-2 leading-snug" title={deal._companyName}>{deal._companyName || '—'}</span>
                     </td>
 
                     {/* Etapa */}
-                    <td className="px-4 py-3 text-steel-400 text-[10px] max-w-[120px] truncate" title={stageMap[p.dealstage] || p.dealstage}>
+                    <td className="px-5 py-4 text-steel-400 text-xs max-w-[140px] truncate" title={stageMap[p.dealstage] || p.dealstage}>
                       {stageMap[p.dealstage] || p.dealstage || '—'}
                     </td>
 
                     {/* Unidad */}
-                    <td className="px-4 py-3 text-steel-400 text-xs whitespace-nowrap">
+                    <td className="px-5 py-4 text-steel-400 text-[13px] whitespace-nowrap">
                       {p.unidad_de_negocio_deal || '—'}
                     </td>
 
                     {/* Peso RCM */}
-                    <td className="px-4 py-3 text-right tabular-nums text-xs whitespace-nowrap">
+                    <td className="px-5 py-4 text-right tabular-nums text-[13px] whitespace-nowrap">
                       {p.peso_total_cmr_toneladas
                         ? <span className="text-steel-200 font-semibold">{parseFloat(p.peso_total_cmr_toneladas).toLocaleString('es-ES')} t</span>
                         : <span className="text-steel-600">—</span>}
                     </td>
 
                     {/* Fecha obj. oferta */}
-                    <td className="px-4 py-3 text-xs whitespace-nowrap">
+                    <td className="px-5 py-4 text-[13px] whitespace-nowrap">
                       <span className={
-                        isVencida ? 'text-red-400 font-semibold' :
-                        isUrgente ? 'text-amber-400 font-semibold' :
+                        isVencida ? 'text-red-400 font-bold' :
+                        isUrgente ? 'text-amber-400 font-bold' :
                         'text-steel-400'
                       }>
                         {fechaStr}
-                        {isVencida && ' ⚠'}
                       </span>
                     </td>
 
                     {/* Provincia */}
-                    <td className="px-4 py-3 text-steel-400 text-xs">
+                    <td className="px-5 py-4 text-steel-400 text-[13px] max-w-[120px] truncate" title={p.ubicacion_provincia_obra__proyecto}>
                       {p.ubicacion_provincia_obra__proyecto || '—'}
                     </td>
 
-                    {/* Tipo partida */}
-                    <td className="px-4 py-3 text-xs">
-                      {p.sector_partida
-                        ? <span className="inline-flex px-2 py-1 rounded-md bg-white/5 text-steel-300 border border-white/8">{p.sector_partida}</span>
-                        : <span className="text-steel-600">—</span>}
+                    {/* Tipo Partida */}
+                    <td className="px-5 py-4 text-steel-400 text-[13px] max-w-[140px] truncate" title={p.tipo_de_obra__proyecto}>
+                      {p.tipo_de_obra__proyecto || '—'}
                     </td>
 
                     {/* Estado partida */}
-                    <td className="px-4 py-3 text-xs">
+                    <td className="px-5 py-4 text-[13px]">
                       {p.madurez_en_adjudicacion_obra__proyecto
-                        ? <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold bg-amber-500/12 text-amber-300 border border-amber-500/30">
+                        ? <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-500/12 text-amber-300 border border-amber-500/30">
                             {p.madurez_en_adjudicacion_obra__proyecto}
                           </span>
                         : <span className="text-steel-600">—</span>}
                     </td>
 
                     {/* Acción */}
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-5 py-4 text-right">
                       <Link
                         to={`/crear?dealId=${deal.id}&dealName=${encodeURIComponent(p.dealname || '')}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/12 border border-amber-500/40 text-amber-300 text-xs font-semibold rounded-lg hover:bg-amber-500/25 hover:border-amber-500/60 transition-all whitespace-nowrap opacity-0 group-hover:opacity-100"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/12 border border-amber-500/40 text-amber-300 text-sm font-semibold rounded-lg hover:bg-amber-500/25 hover:border-amber-500/60 transition-all whitespace-nowrap opacity-0 group-hover:opacity-100"
                       >
-                        <FileText className="w-3 h-3" />Crear Oferta
+                        <FileText className="w-4 h-4" />Crear Oferta
                       </Link>
                     </td>
                   </tr>

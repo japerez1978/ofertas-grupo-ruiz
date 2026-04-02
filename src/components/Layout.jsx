@@ -1,5 +1,6 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, Sliders, AlertTriangle } from 'lucide-react'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { LayoutDashboard, PlusCircle, Sliders, AlertTriangle, LogOut } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 const navItems = [
   { to: '/', label: 'Ofertas', icon: LayoutDashboard },
@@ -10,12 +11,19 @@ const navItems = [
 
 export default function Layout() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="glass sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[98%] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <NavLink to="/" className="flex items-center gap-3 group">
@@ -53,19 +61,30 @@ export default function Layout() {
                   </NavLink>
                 )
               })}
+
+              {/* Separator + Logout */}
+              <div className="w-px h-6 bg-white/10 mx-2"></div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-steel-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 group"
+                title={user?.email || 'Cerrar sesión'}
+              >
+                <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                <span className="hidden lg:inline text-xs">Salir</span>
+              </button>
             </nav>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-[98%] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
 
       {/* Footer */}
       <footer className="border-t border-white/5 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[98%] mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-center text-xs text-steel-500">
             © {new Date().getFullYear()} Grupo Ruiz · Gestión de Ofertas · Conectado con HubSpot CRM
           </p>

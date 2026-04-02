@@ -1,39 +1,39 @@
 @import "tailwindcss";
 
 @theme {
-  --color-navy-50: #e8edf5;
-  --color-navy-100: #c5d0e6;
-  --color-navy-200: #9eb2d5;
-  --color-navy-300: #7793c4;
-  --color-navy-400: #597cb7;
-  --color-navy-500: #3c65aa;
-  --color-navy-600: #355da3;
-  --color-navy-700: #2d5399;
-  --color-navy-800: #254990;
-  --color-navy-900: #17377f;
-  --color-navy-950: #0c1f4a;
+  --color-navy-50: #f9fafb;
+  --color-navy-100: #f3f4f6;
+  --color-navy-200: #e5e7eb;
+  --color-navy-300: #d1d5db;
+  --color-navy-400: #9ca3af;
+  --color-navy-500: #6b7280;
+  --color-navy-600: #4b5563;
+  --color-navy-700: #374151;
+  --color-navy-800: #1f2937;
+  --color-navy-900: #111827;
+  --color-navy-950: #030712;
 
-  --color-steel-50: #f0f2f5;
-  --color-steel-100: #d9dee6;
-  --color-steel-200: #c0c8d6;
-  --color-steel-300: #a6b1c5;
-  --color-steel-400: #939fb8;
-  --color-steel-500: #808dac;
-  --color-steel-600: #7885a5;
-  --color-steel-700: #6d7a9b;
-  --color-steel-800: #636f92;
-  --color-steel-900: #505c82;
-  --color-steel-950: #2a3350;
+  --color-steel-50: #fafafa;
+  --color-steel-100: #f5f5f5;
+  --color-steel-200: #e5e5e5;
+  --color-steel-300: #d4d4d4;
+  --color-steel-400: #a3a3a3;
+  --color-steel-500: #737373;
+  --color-steel-600: #525252;
+  --color-steel-700: #404040;
+  --color-steel-800: #262626;
+  --color-steel-900: #171717;
+  --color-steel-950: #0a0a0a;
 
   --color-accent-400: #4fc3f7;
   --color-accent-500: #29b6f6;
   --color-accent-600: #039be5;
 
-  --color-surface-900: #0b1120;
-  --color-surface-800: #111827;
-  --color-surface-700: #1a2332;
-  --color-surface-600: #1f2b3d;
-  --color-surface-500: #263348;
+  --color-surface-900: #000000;
+  --color-surface-800: #0a0a0a;
+  --color-surface-700: #141414;
+  --color-surface-600: #1f1f1f;
+  --color-surface-500: #2a2a2a;
 
   --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
@@ -61,13 +61,13 @@
 
 /* Glass morphism utility */
 .glass {
-  background: rgba(17, 24, 39, 0.6);
+  background: rgba(10, 10, 10, 0.6);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .glass-card {
-  background: rgba(26, 35, 50, 0.7);
+  background: rgba(20, 20, 20, 0.7);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
