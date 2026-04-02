@@ -168,7 +168,6 @@ function MultiFilter({ id, icon: Icon, label, options, selected, onChange }) {
               onMouseDown={(e) => { 
                 e.preventDefault(); 
                 e.stopPropagation(); 
-                console.log('Limpiando filter:', id);
                 onChange([]); 
               }}
               className="text-[10px] font-black text-accent-500 hover:text-accent-400 px-2.5 py-1 bg-accent-500/5 rounded-md transition-colors"
@@ -243,7 +242,6 @@ export default function OfertasPage() {
       if (cached.data && cached.ts && Date.now() - cached.ts < CACHE_TTL) {
         setOfertas(cached.data)
         setLoading(false)
-        console.log('[CACHE] Cargando ofertas desde memoria local')
         return
       }
     } catch { /* ignore */ }
@@ -259,10 +257,6 @@ export default function OfertasPage() {
     try {
       await getAllOfertas({
         onProgress: ({ partial, loaded, phase }) => {
-          if (loaded > 0 && !window.__debug_done) {
-            console.log('[RAW DATA DEBUG] First Offer enriched props:', partial[0]?._enriched?.dealProps)
-            window.__debug_done = true
-          }
           setOfertas(partial)
           setLoading(false)  // En cuanto llegan datos, oculta spinner completo
           setLoadProgress({ loaded, phase })
@@ -311,7 +305,6 @@ export default function OfertasPage() {
       list = list.filter(o => {
         const val = o._enriched?.dealProps?.madurez_en_adjudicacion_obra__proyecto
         const isMatch = val && estadoPartidaFilter.some(selected => String(selected).trim().toLowerCase() === String(val).trim().toLowerCase())
-        if (!isMatch && val) console.log(`[Filter Debug] No match: ${val} vs`, estadoPartidaFilter)
         return isMatch
       })
     }
@@ -319,7 +312,6 @@ export default function OfertasPage() {
       list = list.filter(o => {
         const val = o._enriched?.dealProps?.tipo_de_obra__proyecto
         const isMatch = val && tipoPartidaFilter.some(selected => String(selected).trim().toLowerCase() === String(val).trim().toLowerCase())
-        if (!isMatch && val) console.log(`[Filter Debug] No match: ${val} vs`, tipoPartidaFilter)
         return isMatch
       })
     }

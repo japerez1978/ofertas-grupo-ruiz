@@ -128,10 +128,6 @@ export async function getAllOfertas({ onProgress } = {}) {
     const firstDealId = (o.associations?.deals?.results || [])[0]?.id;
     const firstCompId = (o.associations?.companies?.results || [])[0]?.id;
     const dealProps = firstDealId ? (dealMap[firstDealId] || {}) : {};
-    if (firstDealId) {
-      console.log(`[HS DEBUG] Deal ${firstDealId} props keys:`, Object.keys(dealProps));
-      console.log(`[HS DEBUG] Deal stage value:`, dealProps.dealstage);
-    }
     o._enriched = {
       dealId: firstDealId || null,
       dealName: dealProps.dealname || '',

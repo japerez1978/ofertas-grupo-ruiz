@@ -120,7 +120,6 @@ export default function NegociosSinOfertaPage() {
         setDeals(cached.data)
         setLoading(false)
         hasCachedData = true
-        console.log('[CACHE] Cargando negocios desde memoria local')
       }
     } catch { /* ignore */ }
     

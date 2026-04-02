@@ -200,7 +200,6 @@ export default function CrearOfertaPage() {
       }
       
       await patchDeal(dealId, propsToUpdate)
-      console.log(`[Sync] nº ${numericValue} sincronizado con Deal ${dealId}`)
 
       setToast({ 
         message: `✅ Sincronizado en HubSpot Nº ${numericValue}`, 
