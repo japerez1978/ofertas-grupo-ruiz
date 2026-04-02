@@ -7,6 +7,7 @@ import CrearOfertaPage from './pages/CrearOfertaPage'
 import DetalleOfertaPage from './pages/DetalleOfertaPage'
 import ScoringPage from './pages/ScoringPage'
 import NegociosSinOfertaPage from './pages/NegociosSinOfertaPage'
+import BacklogPage from './pages/BacklogPage'
 import { useAuth } from './context/AuthContext'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/oferta/:id" element={<DetalleOfertaPage />} />
           <Route path="/scoring" element={<ScoringPage />} />
           <Route path="/negocios" element={<NegociosSinOfertaPage />} />
+          <Route path="/backlog" element={<BacklogPage />} />
         </Route>
       </Route>
 

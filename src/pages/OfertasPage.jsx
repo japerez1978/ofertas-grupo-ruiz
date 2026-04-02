@@ -1,11 +1,13 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Search, ArrowUpDown, FileText,
   ChevronDown, X, Briefcase, Layers, RefreshCw,
-  ExternalLink, Zap, CloudUpload, Filter, Check
+  ExternalLink, Zap, CloudUpload, Filter, Check, ClipboardList, Send
 } from 'lucide-react'
 import { getAllOfertas, writeDealScoresBatch, patchOferta, getDealStagesMap } from '../services/hubspot'
+import { addToBacklog } from '../services/backlog'
+import { useAuth } from '../context/AuthContext'
 import { getOfferStatusBadge, formatCurrency, OFFER_STATUSES } from '../utils/helpers'
 import { loadMatrices } from '../services/supabase'
 import { getMatrixForUnidad } from '../data/matrices'
@@ -225,6 +227,11 @@ export default function OfertasPage() {
   const [tipoPartidaFilter, setTipoPartidaFilter] = useState([])
   const [stageFilter, setStageFilter] = useState([])
   const [stageMap, setStageMap] = useState({})
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedOffers, setSelectedOffers] = useState(new Set())
+  const [sendingToBacklog, setSendingToBacklog] = useState(false)
+  const { user } = useAuth()
+  const navigateTo = useNavigate()
 
   const CACHE_KEY = 'gr_ofertas_cache'
   const CACHE_TTL = 20 * 60 * 1000  // 20 minutos
@@ -642,6 +649,17 @@ export default function OfertasPage() {
           <Link to="/crear" id="btn-create-offer" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-accent-500 to-accent-600 text-white text-sm font-semibold rounded-xl shadow-lg shadow-accent-500/25 hover:shadow-accent-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
             <FileText className="w-4 h-4" />Nueva Oferta
           </Link>
+          <button
+            onClick={() => { setSelectionMode(!selectionMode); setSelectedOffers(new Set()) }}
+            className={`inline-flex items-center gap-2 px-5 py-3 text-sm font-bold rounded-xl transition-all border uppercase tracking-wider ${
+              selectionMode
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                : 'bg-surface-700/50 border-white/8 text-steel-300 hover:text-white hover:border-white/15'
+            }`}
+          >
+            <ClipboardList className="w-4 h-4" />
+            {selectionMode ? '✕ Salir Comité' : '🎯 Modo Comité'}
+          </button>
         </div>
       </div>
 
@@ -955,6 +973,22 @@ export default function OfertasPage() {
           <table className="w-full text-sm" id="offers-table">
             <thead>
               <tr className="border-b border-white/6 bg-white/5">
+                {selectionMode && (
+                  <th className="px-3 py-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedOffers.size > 0 && selectedOffers.size === scoredFiltered.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedOffers(new Set(scoredFiltered.map(o => o.id)))
+                        } else {
+                          setSelectedOffers(new Set())
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-white/20 bg-surface-800 text-amber-500 focus:ring-0 cursor-pointer"
+                    />
+                  </th>
+                )}
                 {COLUMNS.map(({ field, label }) => (
                   <th key={field} onClick={() => toggleSort(field)}
                     className="text-left px-5 py-4 text-steel-500 font-bold tracking-wider uppercase text-[11px] cursor-pointer hover:text-white transition-colors select-none">
@@ -986,8 +1020,27 @@ export default function OfertasPage() {
                 if (isLostOrDiscarded) rowBg = 'bg-[#ff1a40]/15 hover:bg-[#ff1a40]/25 shadow-[inset_0_0_25px_rgba(255,26,64,0.25)] border-y border-[#ff1a40]/30'
                 if (isWon) rowBg = 'bg-[#00e676]/15 hover:bg-[#00e676]/25 shadow-[inset_0_0_25px_rgba(0,230,118,0.25)] border-y border-[#00e676]/30'
 
+                const isSelected = selectedOffers.has(oferta.id)
+
                 return (
-                  <tr key={oferta.id} className={`${rowBg} transition-colors group`} style={{ animationDelay: `${i * 5}ms` }}>
+                  <tr key={oferta.id} className={`${rowBg} transition-colors group ${isSelected ? 'ring-1 ring-amber-500/40 bg-amber-500/5' : ''}`} style={{ animationDelay: `${i * 5}ms` }}>
+                    {selectionMode && (
+                      <td className="px-3 py-4">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {
+                            setSelectedOffers(prev => {
+                              const next = new Set(prev)
+                              if (next.has(oferta.id)) next.delete(oferta.id)
+                              else next.add(oferta.id)
+                              return next
+                            })
+                          }}
+                          className="w-4 h-4 rounded border-white/20 bg-surface-800 text-amber-500 focus:ring-0 cursor-pointer"
+                        />
+                      </td>
+                    )}
                     <td className="px-5 py-4">
                       <a
                         href={hsOfertaUrl(oferta.id)}
@@ -1052,6 +1105,54 @@ export default function OfertasPage() {
           </div>
         )}
       </div>
+
+      {/* Floating Selection Bar — Modo Comité */}
+      {selectionMode && selectedOffers.size > 0 && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
+          <div className="flex items-center gap-4 px-6 py-4 rounded-2xl bg-surface-800/95 backdrop-blur-xl border border-amber-500/30 shadow-[0_0_40px_rgba(245,158,11,0.2),0_25px_50px_rgba(0,0,0,0.5)]">
+            <span className="text-amber-400 font-black text-sm tabular-nums">
+              {selectedOffers.size} oferta{selectedOffers.size !== 1 ? 's' : ''} seleccionada{selectedOffers.size !== 1 ? 's' : ''}
+            </span>
+            <div className="w-px h-6 bg-white/10"></div>
+            <button
+              onClick={() => setSelectedOffers(new Set())}
+              className="text-xs text-steel-400 hover:text-white transition-colors font-medium"
+            >
+              Deseleccionar
+            </button>
+            <button
+              disabled={sendingToBacklog}
+              onClick={async () => {
+                setSendingToBacklog(true)
+                try {
+                  const selectedData = scoredFiltered.filter(o => selectedOffers.has(o.id))
+                  await addToBacklog(selectedData, user?.email)
+                  setSelectedOffers(new Set())
+                  setSelectionMode(false)
+                  navigateTo('/backlog')
+                } catch (err) {
+                  console.error('Error enviando al backlog:', err)
+                  alert('Error enviando al backlog: ' + (err?.message || JSON.stringify(err)))
+                } finally {
+                  setSendingToBacklog(false)
+                }
+              }}
+              className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
+                sendingToBacklog
+                  ? 'bg-amber-500/20 text-amber-400/60 cursor-wait'
+                  : 'bg-gradient-to-r from-amber-500 to-amber-600 text-black hover:from-amber-400 hover:to-amber-500 shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02]'
+              }`}
+            >
+              {sendingToBacklog ? (
+                <span className="w-4 h-4 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              {sendingToBacklog ? 'Enviando...' : 'Enviar al Backlog'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

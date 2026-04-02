@@ -1,11 +1,12 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, Sliders, AlertTriangle, LogOut } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Sliders, AlertTriangle, LogOut, ClipboardList } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const navItems = [
   { to: '/', label: 'Ofertas', icon: LayoutDashboard },
   { to: '/crear', label: 'Nueva Oferta', icon: PlusCircle },
   { to: '/negocios', label: 'Sin Oferta', icon: AlertTriangle },
+  { to: '/backlog', label: 'Backlog', icon: ClipboardList },
   { to: '/scoring', label: 'Scoring', icon: Sliders },
 ]
 
