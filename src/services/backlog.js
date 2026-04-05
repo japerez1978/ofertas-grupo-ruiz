@@ -1,13 +1,15 @@
-import { supabase } from '../lib/supabase'
+import { supabase, getTenantId } from '../lib/supabase'
 
 /**
- * Fetch all backlog items, ordered: pending first (by priority), then done (by completed_at desc)
+ * Fetch all backlog items for this tenant, ordered: pending first (by priority), then done (by completed_at desc)
  */
 export async function getBacklog() {
+  const tenantId = await getTenantId()
   const { data, error } = await supabase
     .from('backlog')
     .select('*')
-    .order('status', { ascending: true })  // 'done' > 'pending' alphabetically, so pending first
+    .eq('tenant_id', tenantId)
+    .order('status', { ascending: true })
     .order('priority', { ascending: true })
     .order('completed_at', { ascending: false, nullsFirst: false })
 
@@ -21,10 +23,13 @@ export async function getBacklog() {
  * @param {string} userEmail - Email of the user adding them
  */
 export async function addToBacklog(offers, userEmail) {
-  // Get current max priority
+  const tenantId = await getTenantId()
+
+  // Get current max priority for this tenant
   const { data: existing } = await supabase
     .from('backlog')
     .select('priority')
+    .eq('tenant_id', tenantId)
     .eq('status', 'pending')
     .order('priority', { ascending: false })
     .limit(1)
@@ -32,6 +37,7 @@ export async function addToBacklog(offers, userEmail) {
   let nextPriority = (existing?.[0]?.priority ?? 0) + 1
 
   const rows = offers.map((offer) => ({
+    tenant_id: tenantId,
     offer_id: offer.id,
     offer_data: {
       id: offer.id,
@@ -78,7 +84,6 @@ export async function isInBacklog(offerId) {
  * @param {Array} items - Array of { id, priority } objects
  */
 export async function reorderBacklog(items) {
-  // Use a transaction-like approach: update each item
   const promises = items.map(({ id, priority }) =>
     supabase
       .from('backlog')
@@ -133,12 +138,14 @@ export async function removeFromBacklog(id) {
 }
 
 /**
- * Clear all completed items
+ * Clear all completed items for this tenant
  */
 export async function clearCompleted() {
+  const tenantId = await getTenantId()
   const { error } = await supabase
     .from('backlog')
     .delete()
+    .eq('tenant_id', tenantId)
     .eq('status', 'done')
 
   if (error) throw error

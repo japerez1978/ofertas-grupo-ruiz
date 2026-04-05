@@ -1,37 +1,12 @@
-import { createClient } from '@supabase/supabase-js'
+// ═══ Scoring Matrices Service ═══
+// Uses the unified Supabase client from lib/supabase.js
+
+import { supabase, getTenantId } from '../lib/supabase'
 import { ALL_MATRICES } from '../data/matrices'
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-// El subdominio identifica al tenant (ej: 'intranox', 'saltoki')
-// Configurable por variable de entorno por despliegue
-export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'intranox'
-
-// Solo crear el cliente si las credenciales están presentes (evita crash en Vercel sin env vars)
-export const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null
-
-// Cache en memoria del tenant_id para no hacer múltiples queries
-let _tenantId = null
-
-/** Busca el tenant_id en Supabase por su subdominio */
-async function getTenantId() {
-  if (!supabase) throw new Error('Supabase no configurado (faltan variables de entorno)')
-  if (_tenantId) return _tenantId
-
-  const { data, error } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('subdominio', TENANT_SLUG)
-    .single()
-
-  if (error || !data) throw new Error(`Tenant '${TENANT_SLUG}' no encontrado en Supabase`)
-
-  _tenantId = data.id
-  return _tenantId
-}
+// Re-export for backward compatibility
+export { supabase, getTenantId }
+export { TENANT_SLUG } from '../lib/supabase'
 
 // ─── Matrices de Scoring ─────────────────────────────────────────────────────
 
