@@ -195,8 +195,7 @@ export default function CrearOfertaPage() {
     
     try {
       const propsToUpdate = {
-        n_de_oferta_inicial_deal: String(numericValue),
-        numero_de_oferta_activa: String(numericValue)
+        numero_de_oferta_libre: String(numericValue)
       }
       
       await patchDeal(dealId, propsToUpdate)
