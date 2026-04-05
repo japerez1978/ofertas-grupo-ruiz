@@ -194,9 +194,7 @@ export default function CrearOfertaPage() {
     if (isNaN(numericValue)) return
     
     try {
-      const propsToUpdate = {
-        numero_de_oferta_libre: String(numericValue)
-      }
+      const propsToUpdate = {}
       
       await patchDeal(dealId, propsToUpdate)
 
@@ -324,6 +322,14 @@ export default function CrearOfertaPage() {
           joinPromises.push(associateOferta(ofertaId, '2-198784785', selectedObra.id).catch(() => null))
         }
         await Promise.all(joinPromises)
+
+        // Sync next available number to the Deal so HubSpot knows
+        if (selectedDeal) {
+          const nextNumber = Number(form.n_de_oferta_inicial_deal) + 1
+          await patchDeal(selectedDeal.id, {
+            numero_de_oferta_libre: String(nextNumber)
+          }).catch(() => null)
+        }
       }
 
       setToast({ message: 'Oferta creada y registros asociados correctamente', type: 'success' })
