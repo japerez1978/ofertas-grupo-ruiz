@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getBacklog, reorderBacklog, markAsDone, markAsPending, removeFromBacklog, clearCompleted, updateBacklogData } from '../services/backlog'
 import { getPresupuestadores, patchOferta } from '../services/hubspot'
@@ -31,8 +31,8 @@ const getHsOfferUrl = (id) => id ? `${HS_DOMAIN}/contacts/${HS_PORTAL}/record/${
  * Custom Dropdown for Backlog Actions (Work to do)
  */
 function ActionEditor({ item, currentAction, onUpdate }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const [open, setOpen] = React.useState(false)
+  const ref = React.useRef(null)
   
   const options = [
     { value: 'Crear oferta nueva', label: '✨ Crear oferta nueva' },
@@ -40,7 +40,7 @@ function ActionEditor({ item, currentAction, onUpdate }) {
     { value: 'Nueva versión oferta actual', label: '🔄 Nueva versión' }
   ]
 
-  useEffect(() => {
+  React.useEffect(() => {
     function h(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
@@ -86,11 +86,11 @@ function ActionEditor({ item, currentAction, onUpdate }) {
  * Custom Dropdown for Presupuestador (Synced with HubSpot)
  */
 function PresupuestadorEditor({ item, currentValue, options, onUpdate }) {
-  const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const ref = useRef(null)
+  const [open, setOpen] = React.useState(false)
+  const [saving, setSaving] = React.useState(false)
+  const ref = React.useRef(null)
 
-  useEffect(() => {
+  React.useEffect(() => {
     function h(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
@@ -102,7 +102,7 @@ function PresupuestadorEditor({ item, currentValue, options, onUpdate }) {
     setSaving(true)
     try {
       // 1. Update HubSpot
-      await patchOferta(item.offer_id, { presupuestador_asignado: val })
+      await patchOferta(item?.offer_id, { presupuestador_asignado: val })
       // 2. Update local state
       onUpdate(item, val)
     } catch (e) {
@@ -150,8 +150,8 @@ function PresupuestadorEditor({ item, currentValue, options, onUpdate }) {
 }
 
 function DeleteButton({ onConfirm }) {
-  const [confirming, setConfirming] = useState(false)
-  const timerRef = useRef(null)
+  const [confirming, setConfirming] = React.useState(false)
+  const timerRef = React.useRef(null)
 
   const handleFirstClick = (e) => {
     e.stopPropagation()
@@ -166,7 +166,7 @@ function DeleteButton({ onConfirm }) {
     onConfirm()
   }
 
-  useEffect(() => {
+  React.useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
   }, [])
 
@@ -211,14 +211,14 @@ const ScoreBadge = ({ score }) => {
 }
 
 export default function BacklogPage() {
-  const [items, setItems] = useState([])
-  const [presupuestadores, setPresupuestadores] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all') 
-  const [error, setError] = useState(null)
-  const [toast, setToast] = useState(null)
+  const [items, setItems] = React.useState([])
+  const [presupuestadores, setPresupuestadores] = React.useState([])
+  const [loading, setLoading] = React.useState(true)
+  const [filter, setFilter] = React.useState('all') 
+  const [error, setError] = React.useState(null)
+  const [toast, setToast] = React.useState(null)
   const navigate = useNavigate()
-  const [draggedItemIdx, setDraggedItemIdx] = useState(null)
+  const [draggedItemIdx, setDraggedItemIdx] = React.useState(null)
   
   const initialFilters = {
     provincia: '',
@@ -228,17 +228,17 @@ export default function BacklogPage() {
     score: ''
   }
 
-  const [pendingFilters, setPendingFilters] = useState({ ...initialFilters })
-  const [doneFilters, setDoneFilters] = useState({ ...initialFilters })
+  const [pendingFilters, setPendingFilters] = React.useState({ ...initialFilters })
+  const [doneFilters, setDoneFilters] = React.useState({ ...initialFilters })
 
-  const loadData = useCallback(async () => {
+  const loadData = React.useCallback(async () => {
     try {
       const [backlogData, hsPresupuestadores] = await Promise.all([
         getBacklog(),
         getPresupuestadores()
       ])
-      setItems(backlogData)
-      setPresupuestadores(hsPresupuestadores)
+      setItems(backlogData || [])
+      setPresupuestadores(hsPresupuestadores || [])
     } catch (e) {
       setError('Error cargando datos: ' + e.message)
     } finally {
@@ -246,7 +246,7 @@ export default function BacklogPage() {
     }
   }, [])
 
-  useEffect(() => { loadData() }, [loadData])
+  React.useEffect(() => { loadData() }, [loadData])
 
   // Lógica de Filtrado por Columna Independiente
   const applyFilters = (data, filters) => {
