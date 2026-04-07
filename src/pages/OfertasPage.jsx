@@ -100,6 +100,99 @@ function PresupuestadorEditor({ ofertaId, currentValue, options, onUpdate }) {
   )
 }
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const ScoreBadge = ({ score }) => {
+  if (!score) return null
+  const scoreLabel = typeof score === 'object' ? (score.label || '') : String(score)
+  if (!scoreLabel) return null
+  const cfg = { 
+    Alto: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400' }, 
+    Medio: { bg: 'bg-amber-500/15', text: 'text-amber-400', dot: 'bg-amber-400' }, 
+    Bajo: { bg: 'bg-red-500/15', text: 'text-red-400', dot: 'bg-red-400' } 
+  }[scoreLabel] || { bg: 'bg-white/10', text: 'text-white/60', dot: 'bg-white/40' }
+  return (
+    <span className={`${cfg.bg} ${cfg.text} inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+      {scoreLabel}
+    </span>
+  )
+}
+
+function StatusEditor({ ofertaId, currentStatus, onUpdate }) {
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function h(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  const options = [
+    { value: 'Pendiente', label: '⏳ Pendiente' },
+    { value: 'En revisión', label: '🔎 En revisión' },
+    { value: 'Enviado', label: '✉️ Enviado' },
+    { value: 'Adjudicado', label: '✅ Adjudicado' },
+    { value: 'Perdido', label: '❌ Perdido' }
+  ]
+
+  async function handleSelect(val) {
+    if (val === currentStatus) { setOpen(false); return }
+    setOpen(false)
+    setSaving(true)
+    try {
+      await patchOferta(ofertaId, { estado_de_la_oferta_presupuesto: val })
+      onUpdate(ofertaId, val)
+    } catch (e) {
+      console.error('Error actualizando estado:', e)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const selected = options.find(o => o.value === currentStatus) || { label: currentStatus || 'Sin estado' }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => !saving && setOpen(!open)}
+        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border ${
+          saving ? 'opacity-50 cursor-wait' : 'hover:bg-white/5 bg-white/3'
+        } ${currentStatus ? 'text-accent-300 border-accent-500/30' : 'text-steel-500 border-white/5'}`}
+      >
+        <span className="truncate">{selected.label}</span>
+        <ChevronDown className="w-2.5 h-2.5 opacity-40" />
+      </button>
+
+      {open && (
+        <div className="absolute z-[110] mt-1 w-48 rounded-xl bg-surface-700 border border-white/10 shadow-2xl py-1 left-0 top-full animate-scale-in">
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => handleSelect(opt.value)}
+              className={`w-full text-left px-3 py-2 text-[10px] font-bold flex items-center gap-2.5 transition-colors ${
+                opt.value === currentStatus ? 'bg-white/10 text-white' : 'text-steel-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <span className="flex-1">{opt.label}</span>
+              {opt.value === currentStatus && <Check className="w-3 h-3 text-accent-400" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const TIPOS_OFERTA = ['Exploración', 'Oferta Matriz (Inicial)', 'Repetición', 'Revisión', 'Ampliación', 'Modificación']
 
 const COLUMNS = [
