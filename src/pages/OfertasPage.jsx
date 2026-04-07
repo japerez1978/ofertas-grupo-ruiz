@@ -230,6 +230,8 @@ export default function OfertasPage() {
   const CACHE_TTL = 20 * 60 * 1000  // 20 minutos
   const [loadingMore, setLoadingMore] = useState(false)
   const [loadProgress, setLoadProgress] = useState({ loaded: 0, phase: 'loading' })
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedOffers, setSelectedOffers] = useState(new Set())
 
   useEffect(() => {
     loadMatrices().then(setMatrices).catch(() => {})
