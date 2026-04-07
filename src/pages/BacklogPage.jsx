@@ -384,7 +384,13 @@ export default function BacklogPage() {
 
   // Componente de Filtro de Cabecera
   const ColumnFilter = ({ data, field, label, currentFilters, setFilters }) => {
-    const options = getUniqueOptions(data, field)
+    let options = getUniqueOptions(data, field)
+    
+    // Forzamos opciones para Score si está vacío (para ofertas antiguas)
+    if (field === 'score' && options.length === 0) {
+      options = ['Alto', 'Medio', 'Bajo']
+    }
+
     if (options.length === 0 && !currentFilters[field]) return <span>{label}</span>
     
     return (
