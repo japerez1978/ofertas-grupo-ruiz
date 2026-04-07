@@ -42,6 +42,10 @@ export const AuthProvider = ({ children }) => {
     return result
   }
 
+  const register = async (email, password) => {
+    return await supabase.auth.signUp({ email, password })
+  }
+
   const logout = async () => {
     resetTenantCache()
     setTenantId(null)
@@ -49,7 +53,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, tenantId, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, tenantId, login, logout, register, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   )

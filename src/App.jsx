@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
+import { RegisterPage } from './pages/RegisterPage'
 import OfertasPage from './pages/OfertasPage'
 import CrearOfertaPage from './pages/CrearOfertaPage'
 import DetalleOfertaPage from './pages/DetalleOfertaPage'
@@ -15,7 +16,8 @@ export default function App() {
 
   return (
     <Routes>
-      {/* Public route: Login */}
+      {/* Public routes */}
+      <Route path="/register" element={user ? <Navigate to="/ofertas" replace /> : <RegisterPage />} />
       <Route path="/login" element={user ? <Navigate to="/ofertas" replace /> : <LoginPage />} />
 
       {/* Protected routes: everything else */}

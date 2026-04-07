@@ -350,6 +350,17 @@ export async function patchOferta(id, properties) {
   });
 }
 
+/** Obtiene las opciones de la propiedad 'presupuestador_asignado' desde HubSpot */
+export async function getPresupuestadores() {
+  try {
+    const data = await request(`/proxy/crm/v3/properties/2-198173351/presupuestador_asignado`);
+    return data.options || [];
+  } catch (err) {
+    console.warn('Error fetching presupuestadores options:', err);
+    return [];
+  }
+}
+
 function chunkArray(arr, size) {
   const chunks = [];
   for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));

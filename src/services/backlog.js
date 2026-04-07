@@ -47,9 +47,14 @@ export async function addToBacklog(offers, userEmail) {
       unidad: offer.properties?.unidad_de_negocio_oferta || offer._enriched?.dealProps?.unidad_de_negocio_deal || '',
       score: offer._score?.label || null,
       dealId: offer._enriched?.dealId || null,
-      numero_oferta: offer.properties?.n_de_oferta || '',
+      numero_oferta: offer.properties?.n__de_oferta || '',
+      numero_heredado: offer.properties?.numero_de_oferta_heredado || '',
+      peso_tn: offer.properties?.peso_total_cmr_toneladas || offer._enriched?.dealProps?.peso_total_cmr_toneladas || '',
+      provincia: offer._enriched?.dealProps?.ubicacion_provincia_obra__proyecto || '',
+      fecha_obj: offer._enriched?.dealProps?.fecha_objetivo_para_ofertar || '',
       tipo_oferta: offer.properties?.tipo_de_oferta || '',
-      estado_oferta: offer.properties?.estado_de_la_oferta || '',
+      estado_oferta: offer.properties?.estado_de_la_oferta_presupuesto || '',
+      presupuestador: offer.properties?.presupuestador_asignado || '',
       dealProps: offer._enriched?.dealProps || {},
     },
     priority: nextPriority++,
@@ -147,6 +152,18 @@ export async function clearCompleted() {
     .delete()
     .eq('tenant_id', tenantId)
     .eq('status', 'done')
+
+  if (error) throw error
+}
+
+/**
+ * Update the offer_data JSONB for a backlog item
+ */
+export async function updateBacklogData(id, newData) {
+  const { error } = await supabase
+    .from('backlog')
+    .update({ offer_data: newData })
+    .eq('id', id)
 
   if (error) throw error
 }

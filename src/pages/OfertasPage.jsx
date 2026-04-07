@@ -1,13 +1,7 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import {
-  Search, ArrowUpDown, FileText,
-  ChevronDown, X, Briefcase, Layers, RefreshCw,
-  ExternalLink, Zap, CloudUpload, Filter, Check, ClipboardList, Send
-} from 'lucide-react'
-import { getAllOfertas, writeDealScoresBatch, patchOferta, getDealStagesMap } from '../services/hubspot'
+import { getAllOfertas, writeDealScoresBatch, patchOferta, getDealStagesMap, getPresupuestadores } from '../services/hubspot'
 import { addToBacklog } from '../services/backlog'
 import { useAuth } from '../context/AuthContext'
+import { User, ChevronDown, Check, Search, ArrowUpDown, FileText, X, Briefcase, Layers, RefreshCw, ExternalLink, Zap, CloudUpload, Filter, ClipboardList, Send } from 'lucide-react'
 import { getOfferStatusBadge, formatCurrency, OFFER_STATUSES } from '../utils/helpers'
 import { loadMatrices } from '../services/supabase'
 import { getMatrixForUnidad } from '../data/matrices'
@@ -41,64 +35,60 @@ function StatCard({ label, count, color, active, onClick }) {
   )
 }
 
-/* ─── Editor de estado inline ─── */
-function StatusEditor({ ofertaId, currentStatus, onUpdate }) {
+/** Editor de Presupuestador inline */
+function PresupuestadorEditor({ ofertaId, currentValue, options, onUpdate }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const ref = useRef(null)
+
   useEffect(() => {
     function h(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [])
-  const badge = getOfferStatusBadge(currentStatus)
-  async function handleSelect(newStatus) {
-    if (newStatus === currentStatus) { setOpen(false); return }
+
+  async function handleSelect(val) {
+    if (val === currentValue) { setOpen(false); return }
     setOpen(false)
     setSaving(true)
     try {
-      await patchOferta(ofertaId, { estado_de_la_oferta_presupuesto: newStatus })
-      onUpdate(ofertaId, newStatus)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch (e) { console.error('Error actualizando estado:', e) }
+      await patchOferta(ofertaId, { presupuestador_asignado: val })
+      onUpdate(ofertaId, val)
+    } catch (e) { console.error('Error actualizando presupuestador:', e) }
     finally { setSaving(false) }
   }
+
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
         onClick={() => !saving && setOpen(!open)}
-        title="Clic para cambiar estado"
-        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight transition-all cursor-pointer select-none
-          ${badge.color}
-          ${saving ? 'opacity-60 cursor-wait' : 'hover:scale-105 active:scale-95 border border-white/10 shadow-lg'}
-        `}
+        className={`inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
+          saving ? 'opacity-50 cursor-wait' : 'hover:bg-white/5 active:scale-95'
+        } ${currentValue ? 'text-steel-300 border-white/5 bg-white/3' : 'text-steel-600 border-dashed border-white/10'}`}
       >
-        {saving
-          ? <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
-          : saved
-            ? <Check className="w-2.5 h-2.5" />
-            : null
-        }
-        {badge.label}
-        {!saving && <ChevronDown className={`w-2.5 h-2.5 opacity-60 transition-transform ${open ? 'rotate-180' : ''}`} />}
+        <User className={`w-3 h-3 ${currentValue ? 'text-steel-500' : 'text-steel-700'}`} />
+        <span className="truncate max-w-[80px]">{currentValue || 'Sin asignar'}</span>
+        {saving ? <div className="w-2 h-2 border border-current border-t-transparent rounded-full animate-spin" /> : <ChevronDown className="w-2.5 h-2.5 opacity-40 shrink-0" />}
       </button>
+
       {open && (
-        <div className="absolute z-50 mt-1 w-56 max-h-72 overflow-y-auto rounded-xl bg-surface-700 border border-white/10 shadow-2xl py-1 left-0 top-full">
-          <p className="px-3 py-1.5 text-[10px] text-steel-500 uppercase tracking-wider font-semibold">Cambiar estado</p>
-          {OFFER_STATUSES.map(s => (
+        <div className="absolute z-[110] mt-1 w-52 max-h-60 overflow-y-auto rounded-xl bg-surface-700 border border-white/10 shadow-2xl py-1 left-0 top-full custom-scrollbar animate-scale-in">
+          <p className="px-3 py-2 text-[9px] text-steel-500 font-black uppercase tracking-widest border-b border-white/5 mb-1">Presupuestadores</p>
+          {options.length === 0 ? (
+            <p className="px-4 py-3 text-[10px] text-steel-400 italic">Cargando...</p>
+          ) : options.map(opt => (
             <button
-              key={s.value}
-              onClick={() => handleSelect(s.value)}
-              className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                s.value === currentStatus ? 'bg-white/8 text-white font-bold' : 'text-steel-300 hover:bg-white/5 hover:text-white'
+              key={opt.value}
+              type="button"
+              onClick={() => handleSelect(opt.label)}
+              className={`w-full text-left px-3 py-2 text-[10px] font-bold flex items-center gap-2.5 transition-colors ${
+                opt.label === currentValue ? 'bg-white/10 text-white' : 'text-steel-300 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <span className={`w-2 h-2 rounded-full shrink-0 ${s.color.split(' ')[0].replace('/20', '')}`} />
-              {s.label}
-              {s.value === currentStatus && <Check className="w-3 h-3 ml-auto text-accent-400" />}
+              <div className={`w-1.5 h-1.5 rounded-full ${opt.label === currentValue ? 'bg-accent-400' : 'bg-steel-600'}`} />
+              <span className="flex-1 truncate">{opt.label}</span>
+              {opt.label === currentValue && <Check className="w-3 h-3 text-accent-400" />}
             </button>
           ))}
         </div>
@@ -119,6 +109,7 @@ const COLUMNS = [
   { field: 'peso_total_cmr_toneladas', label: 'Peso (Tn)' },
   { field: '_fechaObj', label: 'Fecha Obj.' },
   { field: '_provincia', label: 'Provincia' },
+  { field: 'presupuestador_asignado', label: 'Presupuestador' },
   { field: '_tipoPartida', label: 'Tipo Partida' },
   { field: '_estadoPartida', label: 'Estado Partida' },
   { field: 'tipo_de_oferta', label: 'Tipo Oferta' },
@@ -227,9 +218,8 @@ export default function OfertasPage() {
   const [tipoPartidaFilter, setTipoPartidaFilter] = useState([])
   const [stageFilter, setStageFilter] = useState([])
   const [stageMap, setStageMap] = useState({})
-  const [selectionMode, setSelectionMode] = useState(false)
-  const [selectedOffers, setSelectedOffers] = useState(new Set())
   const [sendingToBacklog, setSendingToBacklog] = useState(false)
+  const [presupuestadores, setPresupuestadores] = useState([])
   const { user } = useAuth()
   const navigateTo = useNavigate()
 
@@ -241,6 +231,7 @@ export default function OfertasPage() {
   useEffect(() => {
     loadMatrices().then(setMatrices).catch(() => {})
     getDealStagesMap().then(setStageMap).catch(() => {})
+    getPresupuestadores().then(setPresupuestadores).catch(() => {})
     
     // RESTAURAR LÓGICA DE CACHE: Solo cargar de HubSpot si no tenemos datos frescos
     try {
@@ -548,6 +539,24 @@ export default function OfertasPage() {
           : o
       )
       // Actualizar el caché de localStorage para que persista tras recargar
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
+        if (cached.data) {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ...cached, data: updated }))
+        }
+      } catch (e) { console.warn('Error al actualizar cache local:', e) }
+      return updated
+    })
+  }
+
+  function handlePresupuestadorUpdate(ofertaId, newValue) {
+    setOfertas(prev => {
+      const updated = prev.map(o =>
+        o.id === ofertaId
+          ? { ...o, properties: { ...o.properties, presupuestador_asignado: newValue } }
+          : o
+      )
+      // Update local cache
       try {
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
         if (cached.data) {
@@ -1072,6 +1081,14 @@ export default function OfertasPage() {
                       {dp.fecha_objetivo_para_ofertar ? new Date(dp.fecha_objetivo_para_ofertar).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
                     </td>
                     <td className="px-5 py-4 text-steel-300 text-[11px] truncate max-w-[120px]" title={dp.ubicacion_provincia_obra__proyecto}>{dp.ubicacion_provincia_obra__proyecto || '—'}</td>
+                    <td className="px-5 py-4">
+                      <PresupuestadorEditor 
+                        ofertaId={oferta.id}
+                        currentValue={p.presupuestador_asignado}
+                        options={presupuestadores}
+                        onUpdate={handlePresupuestadorUpdate}
+                      />
+                    </td>
                     <td className="px-5 py-4 text-steel-400 text-[11px] truncate max-w-[140px]" title={dp.tipo_de_obra__proyecto}>{dp.tipo_de_obra__proyecto || '—'}</td>
                     <td className="px-5 py-4 text-steel-400 text-[11px] truncate max-w-[140px]" title={dp.madurez_en_adjudicacion_obra__proyecto}>{dp.madurez_en_adjudicacion_obra__proyecto || '—'}</td>
                     <td className="px-5 py-4 text-steel-500 text-[11px] truncate max-w-[140px]" title={p.tipo_de_oferta}>{p.tipo_de_oferta || '—'}</td>
