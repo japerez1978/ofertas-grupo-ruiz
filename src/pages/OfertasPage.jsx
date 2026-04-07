@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 import { getAllOfertas, writeDealScoresBatch, patchOferta, getDealStagesMap, getPresupuestadores } from '../services/hubspot'
 import { addToBacklog } from '../services/backlog'
