@@ -26,11 +26,14 @@ import {
   getVersionesOferta,
   associateOferta,
   patchDeal,
+  patchOferta,
   request, // Added to handle fetching single deal if needed
+  getPresupuestadores,
 } from '../services/hubspot'
 import { OFFER_STATUSES, PRESUPUESTADORES, TIPOS_OFERTA, UNIDADES_NEGOCIO } from '../utils/helpers'
 import Toast from '../components/Toast'
 import Spinner from '../components/Spinner'
+import DatePickerCustom from '../components/DatePickerCustom'
 
 const inputClass =
   'w-full px-4 py-3 rounded-xl bg-surface-800/80 border border-white/8 text-white text-sm placeholder-steel-500 focus:outline-none focus:border-accent-500/50 focus:ring-2 focus:ring-accent-500/20 transition-all'
@@ -55,6 +58,15 @@ function SearchDropdown({ id, icon: Icon, label, placeholder, onSearch, onSelect
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  // Reset internal state when selectedItem is externally cleared (e.g. company change)
+  useEffect(() => {
+    if (!selectedItem) {
+      setQuery('')
+      setResults([])
+      setOpen(false)
+    }
+  }, [selectedItem])
 
   // Fetch results when requested
   const fetchResults = async (searchValue) => {
@@ -177,15 +189,19 @@ export default function CrearOfertaPage() {
     unidad_de_negocio_oferta: '',
     empresa_vinculada_a_oferta: '',
     contacto_asociado: '',
+    contacto_asociado_2: '',
+    fecha_de_envio_oferta: '',
     dealname: '',
   })
   const [selectedCompany, setSelectedCompany] = useState(null)
   const [selectedDeal, setSelectedDeal] = useState(null)
   const [selectedContact, setSelectedContact] = useState(null)
+  const [selectedContact2, setSelectedContact2] = useState(null)
   const [selectedObra, setSelectedObra] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
   const [loadingNumber, setLoadingNumber] = useState(true)
+  const [presupuestadoresList, setPresupuestadoresList] = useState([])
 
   // Sync "Numero de oferta libre" to HSA Deal
   const syncOfferNumberToDeal = useCallback(async (dealId, num) => {
@@ -260,6 +276,16 @@ export default function CrearOfertaPage() {
         numero_de_oferta_activa: String(next),
       }))
 
+      // Fetch dynamic budgeters (presupuestadores) from HubSpot metadata
+      try {
+        const list = await getPresupuestadores()
+        setPresupuestadoresList(list || [])
+      } catch (err) { 
+        console.error('Error fetching presupuestadores list:', err)
+        // Fallback to static list if service fails
+        setPresupuestadoresList(PRESUPUESTADORES.map(name => ({ label: name, value: name })))
+      }
+
       // If we have a deal from URL, fetch it and select it
       if (urlDealId) {
         try {
@@ -300,11 +326,27 @@ export default function CrearOfertaPage() {
         tipo_de_oferta: form.tipo_de_oferta,
         valor_oferta: form.valor_oferta ? String(form.valor_oferta) : '',
         unidad_de_negocio_oferta: form.unidad_de_negocio_oferta,
-        empresa_vinculada_a_oferta: form.empresa_vinculada_a_oferta
+        empresa_vinculada_a_oferta: form.empresa_vinculada_a_oferta,
+        fecha_de_envio_oferta: form.fecha_de_envio_oferta
+          ? new Date(form.fecha_de_envio_oferta + 'T00:00:00.000Z').getTime()
+          : ''
       }
 
       const created = await createOferta({ properties: payload })
       const ofertaId = created.id || created.results?.[0]?.id
+
+      // ── Write fecha de envío directly via HubSpot API ──
+      if (ofertaId && form.fecha_de_envio_oferta) {
+        try {
+          const res = await patchOferta(ofertaId, {
+            fecha_envio_oferta: form.fecha_de_envio_oferta,      // nombre real en HubSpot
+            fecha_de_envio_oferta: form.fecha_de_envio_oferta,   // fallback por si acaso
+          })
+          console.log('📅 patchOferta fecha response:', JSON.stringify(res, null, 2))
+        } catch (err) {
+          console.error('📅 patchOferta fecha error:', err.message)
+        }
+      }
 
       // ── Make associations securely using the v4 API ──
       if (ofertaId) {
@@ -317,6 +359,9 @@ export default function CrearOfertaPage() {
         }
         if (selectedContact) {
           joinPromises.push(associateOferta(ofertaId, 'contacts', selectedContact.id).catch(() => null))
+        }
+        if (selectedContact2) {
+          joinPromises.push(associateOferta(ofertaId, 'contacts', selectedContact2.id).catch(() => null))
         }
         if (selectedObra) {
           joinPromises.push(associateOferta(ofertaId, '2-198784785', selectedObra.id).catch(() => null))
@@ -434,9 +479,9 @@ export default function CrearOfertaPage() {
               className={selectClass}
             >
               <option value="">— Seleccionar presupuestador —</option>
-              {PRESUPUESTADORES.map((name) => (
-                <option key={name} value={name}>
-                  {name}
+              {presupuestadoresList.map((opt) => (
+                <option key={opt.value} value={opt.label || opt.value}>
+                  {opt.label || opt.value}
                 </option>
               ))}
             </select>
@@ -464,6 +509,19 @@ export default function CrearOfertaPage() {
               </select>
             </div>
 
+            {/* Fecha de Envío de Oferta */}
+            <div>
+              <DatePickerCustom
+                id="field-fecha-envio"
+                label="Fecha Envío Oferta"
+                icon={Send}
+                value={form.fecha_de_envio_oferta}
+                onChange={(dateStr) => setForm(prev => ({ ...prev, fecha_de_envio_oferta: dateStr }))}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Tipo de oferta */}
             <div className="space-y-2">
               <label htmlFor="field-tipo-oferta" className={labelClass}>
@@ -547,15 +605,17 @@ export default function CrearOfertaPage() {
             onSearch={searchCompanies}
             onSelect={(item) => {
               setSelectedCompany(item)
-              // Reset dependants
+              // Reset ALL dependants
               setSelectedDeal(null)
               setSelectedContact(null)
+              setSelectedContact2(null)
               setSelectedObra(null)
               // Update hidden text field internally to send as value
               setForm((prev) => ({ 
                 ...prev, 
                 dealname: '',
                 contacto_asociado: '',
+                contacto_asociado_2: '',
                 empresa_vinculada_a_oferta: item.properties?.name || item.name || ''
               }))
             }}
@@ -563,7 +623,11 @@ export default function CrearOfertaPage() {
             selectedItem={selectedCompany}
             onClear={() => {
               setSelectedCompany(null)
-              setForm((prev) => ({ ...prev, empresa_vinculada_a_oferta: '' }))
+              setSelectedDeal(null)
+              setSelectedContact(null)
+              setSelectedContact2(null)
+              setSelectedObra(null)
+              setForm((prev) => ({ ...prev, empresa_vinculada_a_oferta: '', dealname: '', contacto_asociado: '', contacto_asociado_2: '' }))
             }}
             renderItem={(item) => (
               <div>
@@ -601,7 +665,7 @@ export default function CrearOfertaPage() {
             )}
           />
 
-          {/* Contacto asociado (buscador filtrado por empresa) */}
+          {/* Contacto asociado 1 (buscador filtrado por empresa) */}
           <SearchDropdown
             id="search-contact"
             icon={User}
@@ -620,6 +684,36 @@ export default function CrearOfertaPage() {
             onClear={() => {
               setSelectedContact(null)
               setForm(prev => ({ ...prev, contacto_asociado: '' }))
+            }}
+            renderItem={(item) => (
+              <div>
+                <span className="font-medium">{`${item.properties?.firstname || ''} ${item.properties?.lastname || ''}`.trim() || 'Sin nombre'}</span>
+                {item.properties?.email && (
+                  <span className="ml-2 text-xs text-steel-400 block">{item.properties.email}</span>
+                )}
+              </div>
+            )}
+          />
+
+          {/* Contacto asociado 2 (buscador filtrado por empresa) */}
+          <SearchDropdown
+            id="search-contact-2"
+            icon={User}
+            label={`Contacto Asociado 2 ${selectedCompany ? '(Filtrado)' : ''}`}
+            placeholder={selectedCompany ? `Buscar segundo contacto en ${selectedCompany.properties?.name}...` : "Selecciona una empresa primero..."}
+            onSearch={async (q) => {
+              if (!selectedCompany) return []
+              return await searchContacts(q, selectedCompany.id)
+            }}
+            onSelect={(item) => {
+              setSelectedContact2(item)
+              setForm(prev => ({ ...prev, contacto_asociado_2: `${item.properties?.firstname || ''} ${item.properties?.lastname || ''}`.trim() }))
+            }}
+            displayKey={(item) => `${item.properties?.firstname || ''} ${item.properties?.lastname || ''}`.trim() || item.properties?.email || `ID: ${item.id}`}
+            selectedItem={selectedContact2}
+            onClear={() => {
+              setSelectedContact2(null)
+              setForm(prev => ({ ...prev, contacto_asociado_2: '' }))
             }}
             renderItem={(item) => (
               <div>

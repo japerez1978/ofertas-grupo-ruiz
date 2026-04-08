@@ -1,0 +1,76 @@
+# Reglas del proyecto — Leadstodeals / Juan Ángel
+
+## Stack tecnológico
+- React + Vite + Tailwind CSS
+- Supabase (base de datos + auth + storage)
+- React Router DOM para navegación
+- Vercel para despliegue (modo manual)
+
+## Reglas obligatorias antes de hacer cualquier push
+
+### 1. SIEMPRE ejecutar el build antes de push
+Antes de hacer git push, ejecutar SIEMPRE:
+```bash
+npm run build
+```
+Solo hacer push si el resultado es Exit code: 0 sin errores ni warnings críticos.
+NUNCA hacer push si el build falla.
+
+### 2. Verificar imports antes de usar componentes
+Antes de usar cualquier componente, hook o función:
+- Verificar que está importado en la cabecera del archivo
+- Verificar que está instalado en package.json si es una librería externa
+- Ejecutar: grep -r "is not defined" src/ para detectar variables sin definir
+
+### 3. React Router — reglas de importación
+Siempre importar explícitamente de react-router-dom:
+```jsx
+import { Link, useNavigate, useParams, BrowserRouter, Routes, Route } from "react-router-dom";
+```
+Verificar que App está envuelto en <BrowserRouter> en main.jsx.
+
+### 4. Variables y componentes — regla de oro
+Nunca usar una variable, componente o función sin definirla o importarla primero.
+Antes de entregar código, escanear todos los archivos con:
+```bash
+grep -rn "is not defined\|cannot read\|undefined" src/
+```
+
+### 5. Cuando hay un bug — protocolo completo
+NO arreglar bug a bug. Seguir este protocolo:
+1. Identificar el error en la consola del navegador (F12 → Console)
+2. Buscar en TODOS los archivos el origen del problema
+3. Arreglar TODOS los errores encontrados de una vez
+4. Ejecutar npm run build → confirmar Exit code: 0
+5. Solo entonces hacer git push
+6. Redesplegar manualmente en Vercel → Deployments → Redeploy
+
+### 6. Diferencia entre local y producción
+- En local pueden quedar cachés que ocultan errores
+- Vercel construye desde cero — todos los errores aparecen
+- Si algo funciona en local pero no en Vercel → revisar imports y variables
+
+### 7. Variables de entorno
+- Nunca poner credenciales directamente en el código
+- Siempre usar import.meta.env.VITE_NOMBRE_VARIABLE
+- El archivo .env.local nunca se sube a GitHub (está en .gitignore)
+
+### 8. Supabase — convenciones
+- Nombre de tablas: minúsculas con guiones bajos (ej: sats, allowed_users)
+- Nombres de buckets: minúsculas con guiones (ej: sat-fotos)
+- Siempre verificar el nombre exacto del bucket con: select id from storage.buckets;
+- Row Level Security activado en todas las tablas
+
+### 9. Commits — formato
+Usar mensajes descriptivos:
+- fix(NombreArchivo): descripción del fix
+- feat(NombreArchivo): descripción de la nueva función
+- refactor(NombreArchivo): descripción del refactor
+
+### 10. Antes de entregar cualquier feature
+Checklist mínimo:
+- [ ] npm run build → Exit code: 0
+- [ ] App funciona en localhost:5173
+- [ ] Imports verificados en todos los archivos modificados
+- [ ] Variables de entorno correctas
+- [ ] Sin console.log innecesarios en producción
