@@ -465,7 +465,29 @@ export default function CrearOfertaPage() {
             Asignación y Estado
           </h3>
 
-          {/* Presupuestador */}
+          {/* Unidad de negocio - FULL WIDTH */}
+          <div className="space-y-2">
+            <label htmlFor="field-unidad-negocio" className={labelClass}>
+              <Layers className="w-4 h-4 text-accent-400" />
+              Unidad de Negocio
+            </label>
+            <select
+              id="field-unidad-negocio"
+              name="unidad_de_negocio_oferta"
+              value={form.unidad_de_negocio_oferta}
+              onChange={handleChange}
+              className={selectClass}
+            >
+              <option value="">— Seleccionar unidad —</option>
+              {UNIDADES_NEGOCIO.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Presupuestador - FULL WIDTH */}
           <div className="space-y-2">
             <label htmlFor="field-presupuestador" className={labelClass}>
               <User className="w-4 h-4 text-accent-400" />
@@ -487,40 +509,7 @@ export default function CrearOfertaPage() {
             </select>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Estado de la oferta */}
-            <div className="space-y-2">
-              <label htmlFor="field-estado" className={labelClass}>
-                <Tag className="w-4 h-4 text-accent-400" />
-                Estado de la Oferta
-              </label>
-              <select
-                id="field-estado"
-                name="estado_de_la_ultima_oferta"
-                value={form.estado_de_la_ultima_oferta}
-                onChange={handleChange}
-                className={selectClass}
-              >
-                {OFFER_STATUSES.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Fecha de Envío de Oferta */}
-            <div>
-              <DatePickerCustom
-                id="field-fecha-envio"
-                label="Fecha Envío Oferta"
-                icon={Send}
-                value={form.fecha_de_envio_oferta}
-                onChange={(dateStr) => setForm(prev => ({ ...prev, fecha_de_envio_oferta: dateStr }))}
-              />
-            </div>
-          </div>
-
+          {/* Tipo / Estado - 2 cols */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Tipo de oferta */}
             <div className="space-y-2">
@@ -543,8 +532,30 @@ export default function CrearOfertaPage() {
                 ))}
               </select>
             </div>
+
+            {/* Estado de la oferta */}
+            <div className="space-y-2">
+              <label htmlFor="field-estado" className={labelClass}>
+                <Tag className="w-4 h-4 text-accent-400" />
+                Estado de la Oferta
+              </label>
+              <select
+                id="field-estado"
+                name="estado_de_la_ultima_oferta"
+                value={form.estado_de_la_ultima_oferta}
+                onChange={handleChange}
+                className={selectClass}
+              >
+                {OFFER_STATUSES.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
+          {/* Valor / Fecha - 2 cols */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Valor oferta */}
             <div className="space-y-2">
@@ -565,26 +576,15 @@ export default function CrearOfertaPage() {
               />
             </div>
 
-            {/* Unidad de negocio */}
-            <div className="space-y-2">
-              <label htmlFor="field-unidad-negocio" className={labelClass}>
-                <Layers className="w-4 h-4 text-accent-400" />
-                Unidad de Negocio
-              </label>
-              <select
-                id="field-unidad-negocio"
-                name="unidad_de_negocio_oferta"
-                value={form.unidad_de_negocio_oferta}
-                onChange={handleChange}
-                className={selectClass}
-              >
-                <option value="">— Seleccionar unidad —</option>
-                {UNIDADES_NEGOCIO.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </select>
+            {/* Fecha de Envío de Oferta */}
+            <div>
+              <DatePickerCustom
+                id="field-fecha-envio"
+                label="Fecha Envío Oferta"
+                icon={Send}
+                value={form.fecha_de_envio_oferta}
+                onChange={(dateStr) => setForm(prev => ({ ...prev, fecha_de_envio_oferta: dateStr }))}
+              />
             </div>
           </div>
         </div>
