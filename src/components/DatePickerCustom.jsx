@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { ChevronLeft, ChevronRight, Calendar, ChevronDown, Send } from 'lucide-react'
 
 const DAYS_ES = ['lu', 'ma', 'mi', 'ju', 'vi', 'sá', 'do']
 const MONTHS_ES = [
@@ -43,12 +44,27 @@ export default function DatePickerCustom({ value, onChange, id, label, icon: Ico
   const [viewYear, setViewYear] = useState(selY ?? todayY)
   const [viewMonth, setViewMonth] = useState(selM ?? todayM)
   const [open, setOpen] = useState(false)
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 })
   const ref = useRef(null)
+
+  // Update position when opening
+  useLayoutEffect(() => {
+    if (open && ref.current) {
+      const rect = ref.current.getBoundingClientRect()
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      })
+    }
+  }, [open])
 
   // Close on outside click
   useEffect(() => {
     function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target) && !e.target.closest('.datepicker-portal')) {
+        setOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -151,10 +167,16 @@ export default function DatePickerCustom({ value, onChange, id, label, icon: Ico
           </span>
         </button>
 
-        {/* Calendar dropdown */}
-        {open && (
-          <div className="absolute z-50 mt-2 w-[310px] rounded-2xl bg-surface-700 border border-white/10 shadow-2xl p-4 animate-fade-in-up"
-               style={{ animationDuration: '0.2s' }}>
+        {/* Calendar dropdown via Portal */}
+        {open && createPortal(
+          <div 
+            className="datepicker-portal absolute z-[9999] mt-2 w-[310px] rounded-2xl bg-surface-700 border border-white/10 shadow-2xl p-4 animate-fade-in-up"
+            style={{ 
+              animationDuration: '0.2s',
+              top: `${coords.top}px`,
+              left: `${coords.left}px`
+            }}
+          >
             {/* Header: < month year > */}
             <div className="flex items-center justify-between mb-3">
               <button
@@ -164,8 +186,8 @@ export default function DatePickerCustom({ value, onChange, id, label, icon: Ico
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-sm font-semibold text-white capitalize">
-                {MONTHS_ES[viewMonth]} de {viewYear}
+              <span className="text-sm font-semibold text-white">
+                {MONTHS_ES[viewMonth].charAt(0).toUpperCase() + MONTHS_ES[viewMonth].slice(1)} de {viewYear}
               </span>
               <button
                 type="button"
@@ -176,17 +198,15 @@ export default function DatePickerCustom({ value, onChange, id, label, icon: Ico
               </button>
             </div>
 
-            {/* Day of week headers */}
-            <div className="grid grid-cols-7 gap-0 mb-1">
+            <div className="mb-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
               {DAYS_ES.map((d) => (
-                <div key={d} className="text-center text-xs font-medium text-steel-400 py-1">
+                <div key={d} className="text-center text-[10px] uppercase font-bold text-steel-500 py-1">
                   {d}
                 </div>
               ))}
             </div>
 
-            {/* Day grid */}
-            <div className="grid grid-cols-7 gap-0">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
               {cells.map((cell, i) => {
                 const isToday = cell.current && cell.day === todayD && viewMonth === todayM && viewYear === todayY
                 const isSelected = cell.current && cell.day === selD && viewMonth === selM && viewYear === selY
@@ -198,9 +218,9 @@ export default function DatePickerCustom({ value, onChange, id, label, icon: Ico
                     onClick={() => cell.current && selectDay(cell.day)}
                     disabled={!cell.current}
                     className={`
-                      relative w-full aspect-square flex items-center justify-center text-sm rounded-lg transition-all
+                      relative w-full h-10 flex items-center justify-center text-sm rounded-lg transition-all
                       ${!cell.current
-                        ? 'text-steel-600 cursor-default'
+                        ? 'text-steel-700 cursor-default opacity-30'
                         : isSelected
                           ? 'bg-accent-500 text-white font-semibold shadow-lg shadow-accent-500/25'
                           : 'text-steel-200 hover:bg-white/10 hover:text-white cursor-pointer'
@@ -210,7 +230,7 @@ export default function DatePickerCustom({ value, onChange, id, label, icon: Ico
                     {cell.day}
                     {/* Today dot */}
                     {isToday && !isSelected && (
-                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-accent-400" />
+                      <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-accent-400" />
                     )}
                   </button>
                 )
@@ -234,7 +254,8 @@ export default function DatePickerCustom({ value, onChange, id, label, icon: Ico
                 Borrar
               </button>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>
