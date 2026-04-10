@@ -32,7 +32,8 @@ function MultSelect({ value, onChange }) {
 
 function ParamCard({ param, paramIdx, matrixIdx, onWeightChange, onOptionChange, onRangeChange }) {
   const [expanded, setExpanded] = useState(false)
-  const weightPct = `${param.weight}%`
+  if (!param) return null
+  const weightPct = `${param.weight || 0}%`
 
   return (
     <div className="glass-card rounded-xl overflow-hidden">
@@ -53,8 +54,8 @@ function ParamCard({ param, paramIdx, matrixIdx, onWeightChange, onOptionChange,
             <span className="text-[10px] text-steel-500 mt-0.5">puntos</span>
           </div>
           <div>
-            <p className="text-white font-semibold text-sm">{param.label}</p>
-            <p className="text-steel-500 text-xs font-mono mt-0.5">{param.hubspot_field}</p>
+            <p className="text-white font-semibold text-sm">{param.label || 'Criterio sin nombre'}</p>
+            <p className="text-steel-500 text-xs font-mono mt-0.5">{param.hubspot_field || 'N/A'}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -63,7 +64,7 @@ function ParamCard({ param, paramIdx, matrixIdx, onWeightChange, onOptionChange,
             <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
               <div className="h-full rounded-full bg-accent-500 transition-all" style={{ width: weightPct }} />
             </div>
-            <span className="text-xs text-steel-400 w-8">{param.weight}%</span>
+            <span className="text-xs text-steel-400 w-8">{param.weight || 0}%</span>
           </div>
           {expanded ? <ChevronUp className="w-4 h-4 text-steel-400" /> : <ChevronDown className="w-4 h-4 text-steel-400" />}
         </div>
@@ -72,10 +73,10 @@ function ParamCard({ param, paramIdx, matrixIdx, onWeightChange, onOptionChange,
       {expanded && (
         <div className="border-t border-white/6 px-5 py-4 space-y-3">
           {param.type === 'enum' && (param.options || []).map((opt, oi) => (
-            <div key={opt.value} className="flex items-center justify-between gap-3">
-              <span className="text-sm text-steel-300 flex-1">{opt.label || opt.value}</span>
+            <div key={opt?.value || oi} className="flex items-center justify-between gap-3">
+              <span className="text-sm text-steel-300 flex-1">{opt?.label || opt?.value || 'N/A'}</span>
               <MultSelect
-                value={opt.multiplier}
+                value={opt?.multiplier}
                 onChange={v => onOptionChange(matrixIdx, paramIdx, oi, v)}
               />
             </div>
@@ -187,7 +188,7 @@ export default function ScoringPage() {
 
   const matrix = (matrices || [])[activeTab]
   const matrixParams = matrix?.criteria || matrix?.params || []
-  const totalWeight = matrixParams.reduce((s, p) => s + p.weight, 0) || 0
+  const totalWeight = matrixParams.reduce((s, p) => s + (p?.weight || 0), 0) || 0
   const preview = matrix ? calculateScore(previewDeal, matrix) : null
 
   if (loading) return (

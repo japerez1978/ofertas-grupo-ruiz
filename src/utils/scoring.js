@@ -68,13 +68,14 @@ export function calculateScore(dealProps, matrix) {
       }
     }
 
-    const points = param.weight * multiplier
+    const w = parseFloat(param.weight) || 0
+    const points = w * multiplier
     sumaPonderada += points
 
     breakdown.push({
-      id: param.id,
-      label: param.label,
-      weight: param.weight,
+      id: param.id || 'N/A',
+      label: param.label || 'N/A',
+      weight: w,
       multiplier,
       points: Math.round(points * 10) / 10,
       matchedLabel,
