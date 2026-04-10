@@ -16,39 +16,26 @@ export { TENANT_SLUG } from '../lib/supabase'
  * Fallback: localStorage → defaults hardcodeados.
  */
 export async function loadMatrices() {
-  try {
-    const tenantId = await getTenantId()
+  const tenantId = await getTenantId()
 
-    const { data, error } = await supabase
-      .from('scoring_matrices')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .order('created_at', { ascending: true })
+  const { data, error } = await supabase
+    .from('scoring_matrices')
+    .select(`
+      *,
+      criteria (
+        *,
+        criterion_options (*)
+      ),
+      score_thresholds (*)
+    `)
+    .eq('tenant_id', tenantId)
+    .eq('active', true)
+    .order('created_at')
 
-    if (error) throw error
+  if (error) throw error
 
-    if (!data || data.length === 0) {
-      // Primera vez → seed con defaults
-      await seedDefaultMatrices(tenantId)
-      return ALL_MATRICES
-    }
-
-    return data.map(row => ({
-      id: row.matrix_key,
-      nombre: row.nombre,
-      unidades: row.unidades,
-      params: row.params,
-    }))
-  } catch (e) {
-    console.warn('[Supabase] loadMatrices failed:', e.message, '— usando fallback')
-    // Fallback 1: localStorage
-    try {
-      const stored = JSON.parse(localStorage.getItem('gr_matrices') || 'null')
-      if (stored?.length) return stored
-    } catch { /* noop */ }
-    // Fallback 2: defaults hardcodeados
-    return ALL_MATRICES
-  }
+  // The caller (ScoringPage) expects an array of matrices directly as fetched.
+  return data
 }
 
 /**

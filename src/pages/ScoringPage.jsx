@@ -117,8 +117,8 @@ export default function ScoringPage() {
 
   useEffect(() => {
     loadMatrices()
-      .then(data => { setMatrices(data); setLoading(false) })
-      .catch(() => { setLoading(false) })
+      .then(data => { setMatrices(data || []); setLoading(false) })
+      .catch(() => { setMatrices([]); setLoading(false) })
   }, [])
 
   // Preview: simulate a deal to show example scores
@@ -185,8 +185,9 @@ export default function ScoringPage() {
     }
   }
 
-  const matrix = matrices[activeTab]
-  const totalWeight = matrix?.params.reduce((s, p) => s + p.weight, 0) || 0
+  const matrix = (matrices || [])[activeTab]
+  const matrixParams = matrix?.criteria || matrix?.params || []
+  const totalWeight = matrixParams.reduce((s, p) => s + p.weight, 0) || 0
   const preview = matrix ? calculateScore(previewDeal, matrix) : null
 
   if (loading) return (
@@ -242,7 +243,7 @@ export default function ScoringPage() {
 
       {/* Matrix tabs */}
       <div className="flex gap-2">
-        {matrices.map((m, i) => (
+        {(matrices || []).map((m, i) => (
           <button
             key={m.id}
             onClick={() => setActiveTab(i)}
@@ -263,7 +264,7 @@ export default function ScoringPage() {
           <div className="flex flex-wrap items-center gap-4 px-5 py-3 rounded-xl bg-surface-800/60 border border-white/5 text-sm">
             <div>
               <span className="text-steel-500">Unidades: </span>
-              <span className="text-white font-medium">{matrix.unidades.join(', ')}</span>
+              <span className="text-white font-medium">{(matrix.unidades || []).join(', ')}</span>
             </div>
             <div>
               <span className="text-steel-500">Total pesos: </span>
@@ -280,9 +281,8 @@ export default function ScoringPage() {
             )}
           </div>
 
-          {/* Parameters */}
           <div className="space-y-3">
-            {matrix.params.map((param, pi) => (
+            {matrixParams.map((param, pi) => (
               <ParamCard
                 key={param.id}
                 param={param}

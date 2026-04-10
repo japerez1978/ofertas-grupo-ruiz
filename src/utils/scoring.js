@@ -18,11 +18,12 @@ const MULTIPLIERS = {
 export function calculateScore(dealProps, matrix) {
   if (!matrix || !dealProps) return null
 
-  const maxPts = matrix.params.reduce((s, p) => s + p.weight, 0) // = 100
+  const matrixParams = matrix.criteria || matrix.params || []
+  const maxPts = matrixParams.reduce((s, p) => s + (p.weight || 0), 0) || 100 // = 100
   let sumaPonderada = 0
   const breakdown = []
 
-  for (const param of matrix.params) {
+  for (const param of matrixParams) {
     // Resolve value (use alt field as fallback)
     const value = dealProps[param.hubspot_field] ?? dealProps[param.hubspot_field_alt] ?? null
     let multiplier = param.default_multiplier ?? 0
