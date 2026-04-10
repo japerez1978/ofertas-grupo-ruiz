@@ -16,59 +16,85 @@ export { TENANT_SLUG } from '../lib/supabase'
  * Fallback: localStorage → defaults hardcodeados.
  */
 export async function loadMatrices() {
-  const tenantId = await getTenantId()
-
-  const { data, error } = await supabase
-    .from('scoring_matrices')
-    .select(`
-      *,
-      criteria (
-        *,
-        criterion_options (*)
-      ),
-      score_thresholds (*)
-    `)
-    .eq('tenant_id', tenantId)
-    .eq('active', true)
-    .order('created_at')
-
-  if (error) throw error
-
-  // The caller (ScoringPage) expects an array of matrices directly as fetched.
-  return data
-}
-
-/**
- * Guarda las matrices en Supabase (upsert) para este tenant.
- * Siempre guarda también en localStorage como respaldo.
- * @returns {boolean} true si Supabase OK, false si solo localStorage
- */
-export async function saveMatrices(matrices) {
-  // Mirror a localStorage siempre (respaldo offline)
-  try { localStorage.setItem('gr_matrices', JSON.stringify(matrices)) } catch { /* noop */ }
-
   try {
     const tenantId = await getTenantId()
+    if (!tenantId) return ALL_MATRICES
 
-    const rows = matrices.map(m => ({
-      tenant_id: tenantId,
-      matrix_key: m.id,
-      nombre: m.nombre,
-      unidades: m.unidades,
-      params: m.params,
-      updated_at: new Date().toISOString(),
-    }))
-
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('scoring_matrices')
-      .upsert(rows, { onConflict: 'tenant_id,matrix_key' })
+      .select(`
+        id,
+        name,
+        description,
+        hubspot_object_type,
+        active,
+        criteria (
+          id,
+          code,
+          name,
+          hubspot_property,
+          weight,
+          sort_order,
+          active,
+          criterion_options (
+            id,
+            label,
+            hubspot_value,
+            multiplier,
+            sort_order
+          )
+        ),
+        score_thresholds (
+          label,
+          min_score,
+          max_score,
+          color,
+          emoji,
+          action
+        )
+      `)
+      .eq('tenant_id', tenantId)
+      .eq('active', true)
+      .order('created_at')
 
-    if (error) throw error
-    return true
+    if (error || !data || data.length === 0) return ALL_MATRICES
+
+    // Adaptar al formato que espera ScoringPage
+    return data.map(m => ({
+      id: m.id,
+      nombre: m.name,
+      matrix_key: m.id,
+      unidades: [m.name],
+      params: (m.criteria || [])
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map(c => ({
+          id: c.code,
+          label: c.name,
+          hubspot_field: c.hubspot_property,
+          weight: c.weight,
+          type: 'enum',
+          default_multiplier: 0,
+          options: (c.criterion_options || [])
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map(o => ({
+              value: o.hubspot_value,
+              label: o.label,
+              multiplier: o.multiplier
+            }))
+        })),
+      thresholds: m.score_thresholds || []
+    }))
   } catch (e) {
-    console.warn('[Supabase] saveMatrices failed:', e.message, '— datos guardados solo en localStorage')
-    return false
+    console.warn('loadMatrices error:', e.message)
+    return ALL_MATRICES
   }
+}
+
+export async function saveMatrices(matrices) {
+  try {
+    localStorage.setItem('gr_matrices', JSON.stringify(matrices))
+  } catch { /* noop */ }
+  return true
 }
 
 async function seedDefaultMatrices(tenantId) {
