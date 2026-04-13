@@ -1,25 +1,19 @@
 // ═══ Scoring Matrices Service ═══
 // Uses the unified Supabase client from lib/supabase.js
 
-import { supabase, getTenantId } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { ALL_MATRICES } from '../data/matrices'
-
-// Re-export for backward compatibility
-export { supabase, getTenantId }
-export { TENANT_SLUG } from '../lib/supabase'
 
 // ─── Matrices de Scoring ─────────────────────────────────────────────────────
 
 /**
- * Carga las matrices de scoring desde Supabase para este tenant.
- * Si no existen, las crea con los valores por defecto.
- * Fallback: localStorage → defaults hardcodeados.
+ * Carga las matrices de scoring desde Supabase para un tenant específico.
+ * @param {number} tenantId - El ID de la empresa activa.
  */
-export async function loadMatrices() {
-  try {
-    const tenantId = await getTenantId()
-    if (!tenantId) return ALL_MATRICES
+export async function loadMatrices(tenantId) {
+  if (!tenantId) return ALL_MATRICES
 
+  try {
     const { data, error } = await supabase
       .from('scoring_matrices')
       .select(`
@@ -57,9 +51,12 @@ export async function loadMatrices() {
       .eq('active', true)
       .order('created_at')
 
-    if (error || !data || data.length === 0) return ALL_MATRICES
+    if (error || !data || data.length === 0) {
+       console.log(`[Supabase] No hay matrices remotas para tenant ${tenantId}, usando defaults.`);
+       return ALL_MATRICES
+    }
 
-    // Adaptar al formato que espera ScoringPage
+    // Adaptar al formato que espera la UI
     return data.map(m => ({
       id: m.id,
       nombre: m.name,
@@ -97,28 +94,17 @@ export async function saveMatrices(matrices) {
   return true
 }
 
-async function seedDefaultMatrices(tenantId) {
-  const rows = ALL_MATRICES.map(m => ({
-    tenant_id: tenantId,
-    matrix_key: m.id,
-    nombre: m.nombre,
-    unidades: m.unidades,
-    params: m.params,
-  }))
-  const { error } = await supabase.from('scoring_matrices').insert(rows)
-  if (error) console.warn('[Supabase] seed matrices error:', error.message)
-}
-
 // ─── Events Logging ──────────────────────────────────────────────────────────
 
 /**
- * Registra un evento en tenant_events (best-effort, no falla si hay error)
- * @param {string} evento - ej: 'score_calculado', 'score_guardado_hubspot'
+ * Registra un evento en tenant_events
+ * @param {string} evento - ej: 'score_calculado'
+ * @param {number} tenantId - El ID de la empresa activa.
  * @param {Object} metadata - datos adicionales
  */
-export async function logEvent(evento, metadata = {}) {
+export async function logEvent(evento, tenantId, metadata = {}) {
+  if (!tenantId) return 
   try {
-    const tenantId = await getTenantId()
     await supabase.from('tenant_events').insert({
       tenant_id: tenantId,
       app_slug: 'ofertas_hubspot',

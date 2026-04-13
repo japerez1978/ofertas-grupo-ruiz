@@ -1,24 +1,17 @@
-import { createClient } from '@supabase/supabase-js'
+import { supabase as coreSupabase } from 'core-saas'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Re-export the core client
+export const supabase = coreSupabase
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase URL and Anon Key are required environment variables.')
-}
-
-// ═══ SINGLE Supabase client for the entire app ═══
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// ═══ Tenant resolution ═══
+// ═══ Tenant resolution (Legacy/Deprecated) ═══
+// Use useTenant() hook in components instead.
 export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || 'intranox'
 
-let _tenantId = null
-
-/** Resolve tenant_id from subdominio slug */
+/** 
+ * Resolve tenant_id from subdominio slug 
+ * @deprecated Use useTenant() from core-saas in components.
+ */
 export async function getTenantId() {
-  if (_tenantId) return _tenantId
-
   const { data, error } = await supabase
     .from('tenants')
     .select('id')
@@ -26,12 +19,9 @@ export async function getTenantId() {
     .single()
 
   if (error || !data) throw new Error(`Tenant '${TENANT_SLUG}' no encontrado en Supabase`)
-
-  _tenantId = data.id
-  return _tenantId
+  return data.id
 }
 
-/** Reset cached tenant (useful on logout) */
 export function resetTenantCache() {
-  _tenantId = null
+  // No-op for now as we transition to hook-based identity
 }

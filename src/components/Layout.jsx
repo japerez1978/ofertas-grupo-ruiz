@@ -1,6 +1,8 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, Sliders, AlertTriangle, LogOut, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Sliders, AlertTriangle, LogOut, ClipboardList, ScrollText } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useTenant } from 'core-saas' // Hook del Core
+import Spinner from './Spinner'
 
 const navItems = [
   { to: '/', label: 'Ofertas', icon: LayoutDashboard },
@@ -15,10 +17,18 @@ export default function Layout() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
 
+  // Cargamos los datos de la empresa y el rol desde el Core
+  const { data: tenantData, isLoading } = useTenant(user?.id, user?.email)
+  
+  const tenant = tenantData?.tenants
+  const userRole = tenantData?.rol
+
   const handleLogout = async () => {
     await logout()
     navigate('/login')
   }
+
+  if (isLoading && !tenantData) return <Spinner />
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -26,19 +36,17 @@ export default function Layout() {
       <header className="glass sticky top-0 z-50">
         <div className="max-w-[98%] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
+            {/* Logo Dinámico */}
             <NavLink to="/" className="flex items-center gap-3 group">
-              <img
-                src="/logo.png"
-                alt="Grupo Ruiz logo"
-                className="w-10 h-10 rounded-xl object-contain group-hover:opacity-90 transition-opacity duration-300"
-              />
+              <div className="w-10 h-10 bg-accent-500/20 rounded-xl flex items-center justify-center border border-accent-500/30">
+                 <ScrollText className="w-6 h-6 text-accent-400" />
+              </div>
               <div>
-                <h1 className="text-lg font-bold tracking-tight text-white leading-none">
-                  GRUPO RUIZ
+                <h1 className="text-lg font-bold tracking-tight text-white leading-none uppercase">
+                  {tenant?.nombre || 'GRUPO RUIZ'}
                 </h1>
                 <span className="text-[10px] font-medium tracking-[0.2em] text-accent-400 uppercase">
-                  Ofertas
+                  Portal de Ofertas
                 </span>
               </div>
             </NavLink>
@@ -63,12 +71,22 @@ export default function Layout() {
                 )
               })}
 
-              {/* Separator + Logout */}
+              {/* Separator + User Info */}
               <div className="w-px h-6 bg-white/10 mx-2"></div>
+              
+              <div className="hidden md:flex flex-col items-end mr-3 px-2 border-r border-white/5">
+                <span className="text-[10px] text-steel-400 font-medium truncate max-w-[120px]">
+                  {user?.email}
+                </span>
+                <span className="text-[9px] text-accent-500 uppercase tracking-tighter">
+                  {userRole}
+                </span>
+              </div>
+
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-steel-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 group"
-                title={user?.email || 'Cerrar sesión'}
+                title="Cerrar sesión"
               >
                 <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
                 <span className="hidden lg:inline text-xs">Salir</span>
@@ -84,10 +102,10 @@ export default function Layout() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-6">
+      <footer className="border-t border-white/5 py-6 mt-auto">
         <div className="max-w-[98%] mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-center text-xs text-steel-500">
-            © {new Date().getFullYear()} Grupo Ruiz · Gestión de Ofertas · Conectado con HubSpot CRM
+            © {new Date().getFullYear()} {tenant?.nombre || 'Grupo Ruiz'} · Gestión Multi-tenant de Ofertas
           </p>
         </div>
       </footer>

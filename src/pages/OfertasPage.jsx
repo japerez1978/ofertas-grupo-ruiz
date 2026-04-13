@@ -3,6 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 
 import { getAllOfertas, writeDealScoresBatch, patchOferta, getDealStagesMap, getPresupuestadores } from '../services/hubspot'
 import { addToBacklog } from '../services/backlog'
+
+// Usamos el motor de identidad del Core
+import { useTenant } from 'core-saas'
 import { useAuth } from '../context/AuthContext'
 import { User, ChevronDown, Check, Search, ArrowUpDown, FileText, X, Briefcase, Layers, RefreshCw, ExternalLink, Zap, CloudUpload, Filter, ClipboardList, Send } from 'lucide-react'
 import { getOfferStatusBadge, formatCurrency, OFFER_STATUSES } from '../utils/helpers'
@@ -316,7 +319,12 @@ export default function OfertasPage() {
   const [stageMap, setStageMap] = useState({})
   const [sendingToBacklog, setSendingToBacklog] = useState(false)
   const [presupuestadores, setPresupuestadores] = useState([])
-  const { user } = useAuth()
+  
+  // MOTOR SaaS: Obtenemos el tenantId real del Core
+  const { user: authUser } = useAuth()
+  const { data: tenantData } = useTenant(authUser?.id, authUser?.email)
+  const tenantId = tenantData?.tenant_id
+
   const navigateTo = useNavigate()
 
   const CACHE_KEY = 'gr_ofertas_cache'
@@ -327,7 +335,10 @@ export default function OfertasPage() {
   const [selectedOffers, setSelectedOffers] = useState(new Set())
 
   useEffect(() => {
-    loadMatrices().then(setMatrices).catch(() => {})
+    // Si tenemos tenantId, cargamos las matrices específicas de la empresa.
+    // Si no, loadMatrices usará los defaults.
+    loadMatrices(tenantId).then(setMatrices).catch(() => {})
+    
     getDealStagesMap().then(setStageMap).catch(() => {})
     getPresupuestadores().then(setPresupuestadores).catch(() => {})
     
@@ -343,7 +354,7 @@ export default function OfertasPage() {
     } catch { /* ignore */ }
 
     fetchOfertas(true)
-  }, [])
+  }, [tenantId])
 
   async function fetchOfertas(showSpinner = true) {
     if (showSpinner) setLoading(true)
