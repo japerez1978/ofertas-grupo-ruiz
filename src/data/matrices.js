@@ -80,12 +80,12 @@ export const MATRIZ_RCM = {
   unidades: ['RCM'],
   params: [
     {
-      id: 'prioridad',
+      id: 'P1',
       label: 'Prioridad de la partida',
       hubspot_field: 'prioridad_de_obra__proyecto',
       weight: 20,
       type: 'enum',
-      default_multiplier: 0, // Desconocida → Media
+      default_multiplier: 0,
       options: [
         { value: 'Muy Alta',    label: 'Muy Alta',    multiplier: 1.0 },
         { value: 'Alta',        label: 'Alta',        multiplier: 0.5 },
@@ -95,31 +95,31 @@ export const MATRIZ_RCM = {
       ],
     },
     {
-      id: 'provincia',
+      id: 'P2',
       label: 'Ubicación Provincia',
       hubspot_field: 'ubicacion_provincia_obra__proyecto',
       weight: 15,
       type: 'province_map',
-      default_multiplier: -1.0, // Resto → Muy baja
+      default_multiplier: -1.0,
     },
     {
-      id: 'peso_rcm',
+      id: 'P3',
       label: 'Peso Total RCM (Tn)',
       hubspot_field: 'peso_total_cmr_toneladas',
       weight: 20,
       type: 'range',
       default_multiplier: -1.0,
       ranges: [
-        { min: 1000, max: null,  multiplier: -0.5 }, // >1000 → Baja (baja rentabilidad)
-        { min: 500,  max: 1000,  multiplier: 1.0  }, // 500-1000 → Muy alta
-        { min: 150,  max: 500,   multiplier: 0.5  }, // 150-500 → Alta
-        { min: 80,   max: 150,   multiplier: 0.0  }, // 80-150 → Media
-        { min: 30,   max: 80,    multiplier: -0.5 }, // 30-80 → Baja
-        { min: 0,    max: 30,    multiplier: -1.0 }, // 0-30 → Muy baja
+        { min: 1000, max: null,  multiplier: -0.5 },
+        { min: 500,  max: 1000,  multiplier: 1.0  },
+        { min: 150,  max: 500,   multiplier: 0.5  },
+        { min: 80,   max: 150,   multiplier: 0.0  },
+        { min: 30,   max: 80,    multiplier: -0.5 },
+        { min: 0,    max: 30,    multiplier: -1.0 },
       ],
     },
     {
-      id: 'estado',
+      id: 'P4',
       label: 'Estado de la partida',
       hubspot_field: 'madurez_en_adjudicacion_obra__proyecto',
       weight: 10,
@@ -134,7 +134,7 @@ export const MATRIZ_RCM = {
       ],
     },
     {
-      id: 'tipo',
+      id: 'P5',
       label: 'Tipo de partida',
       hubspot_field: 'tipo_de_obra__proyecto',
       weight: 15,
@@ -150,7 +150,7 @@ export const MATRIZ_RCM = {
       ],
     },
     {
-      id: 'valor',
+      id: 'P6',
       label: 'Valor de la partida',
       hubspot_field: 'valor_actual',
       hubspot_field_alt: 'amount',
@@ -158,11 +158,11 @@ export const MATRIZ_RCM = {
       type: 'range',
       default_multiplier: -1.0,
       ranges: [
-        { min: 1000000, max: null,    multiplier: 1.0  }, // >1M → Muy alta
-        { min: 500000,  max: 1000000, multiplier: 0.5  }, // 500k-1M → Alta
-        { min: 300000,  max: 500000,  multiplier: 0.0  }, // 300k-500k → Media
-        { min: 100000,  max: 300000,  multiplier: -0.5 }, // 100k-300k → Baja
-        { min: 0,       max: 100000,  multiplier: -1.0 }, // 0-100k → Muy baja
+        { min: 1000000, max: null,    multiplier: 1.0  },
+        { min: 500000,  max: 1000000, multiplier: 0.5  },
+        { min: 300000,  max: 500000,  multiplier: 0.0  },
+        { min: 100000,  max: 300000,  multiplier: -0.5 },
+        { min: 0,       max: 100000,  multiplier: -1.0 },
       ],
     },
   ],
@@ -177,10 +177,10 @@ export const MATRIZ_INTRANOX = {
   unidades: ['Intranox Rioja', 'Intranox Norte', 'Autom. Oresteo', 'Autom. Racpur', 'Automatización'],
   params: [
     {
-      id: 'prioridad',
+      id: 'P1',
       label: 'Prioridad de la partida',
       hubspot_field: 'prioridad_de_obra__proyecto',
-      weight: 20,
+      weight: 15,
       type: 'enum',
       default_multiplier: 0,
       options: [
@@ -192,42 +192,42 @@ export const MATRIZ_INTRANOX = {
       ],
     },
     {
-      id: 'provincia',
+      id: 'P2',
       label: 'Ubicación Provincia',
       hubspot_field: 'ubicacion_provincia_obra__proyecto',
-      weight: 15,
+      weight: 10,
       type: 'province_map',
       default_multiplier: -1.0,
     },
     {
-      id: 'depositos',
+      id: 'P3',
       label: 'Nº Total de Depósitos',
       hubspot_field: 'numero_total_de_depositos',
-      weight: 20,
+      weight: 15,
       type: 'range',
       default_multiplier: -1.0,
       ranges: [
-        { min: 70, max: null, multiplier: 1.0  }, // >70 → Muy alta
-        { min: 30, max: 70,   multiplier: 0.5  }, // 30-70 → Alta
-        { min: 11, max: 30,   multiplier: 0.0  }, // 11-30 → Media
-        { min: 5,  max: 11,   multiplier: -0.5 }, // 5-10 → Baja
-        { min: 0,  max: 5,    multiplier: -1.0 }, // 0-5 → Muy baja
+        { min: 70, max: null, multiplier: 1.0  },
+        { min: 30, max: 70,   multiplier: 0.5  },
+        { min: 11, max: 30,   multiplier: 0.0  },
+        { min: 5,  max: 11,   multiplier: -0.5 },
+        { min: 0,  max: 5,    multiplier: -1.0 },
       ],
     },
     {
-      id: 'sector',
+      id: 'P4',
       label: 'Sector de la partida',
       hubspot_field: 'sector_partida',
-      weight: 25,
+      weight: 20,
       type: 'sector_map',
-      default_multiplier: -1.0, // desconocido → Muy baja
+      default_multiplier: -1.0,
     },
     {
-      id: 'valor',
+      id: 'P5',
       label: 'Valor de la partida',
       hubspot_field: 'valor_actual',
       hubspot_field_alt: 'amount',
-      weight: 20,
+      weight: 15,
       type: 'range',
       default_multiplier: -1.0,
       ranges: [
@@ -236,6 +236,32 @@ export const MATRIZ_INTRANOX = {
         { min: 300000,  max: 500000,  multiplier: 0.0  },
         { min: 100000,  max: 300000,  multiplier: -0.5 },
         { min: 0,       max: 100000,  multiplier: -1.0 },
+      ],
+    },
+    {
+      id: 'P6',
+      label: 'Salud del negocio',
+      hubspot_field: 'hs_deal_score',
+      weight: 15,
+      type: 'range',
+      default_multiplier: 0,
+      ranges: [
+        { min: 70, max: null, multiplier: 1.0 },
+        { min: 45, max: 70,   multiplier: 0.5 },
+        { min: 0,  max: 45,   multiplier: -1.0 },
+      ],
+    },
+    {
+      id: 'P7',
+      label: 'Nivel de cliente partida',
+      hubspot_field: 'nivel_de_cliente_partida',
+      weight: 10,
+      type: 'enum',
+      default_multiplier: 0,
+      options: [
+        { value: 'Tier 1', label: 'Tier 1', multiplier: 1.0 },
+        { value: 'Tier 2', label: 'Tier 2', multiplier: 0.5 },
+        { value: 'Tier 3', label: 'Tier 3', multiplier: -1.0 },
       ],
     },
   ],
